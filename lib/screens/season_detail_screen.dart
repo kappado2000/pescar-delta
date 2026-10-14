@@ -14,6 +14,7 @@ import '../models/need_item.dart';
 import '../theme.dart';
 import '../models/expense.dart';
 import '../widgets/quick_expense_sheet.dart';
+import '../widgets/swipe_delete.dart';
 import 'expenses_screen.dart';
 import 'need_categories_screen.dart';
 import 'needs_screen.dart';
@@ -545,29 +546,81 @@ class _NeedsCard extends StatelessWidget {
                       ),
                     ),
                     children: [
-                      for (final (n, item) in list.indexed)
-                        CheckboxListTile(
-                          dense: true,
-                          visualDensity: VisualDensity.compact,
-                          value: item.done,
-                          controlAffinity: ListTileControlAffinity.trailing,
-                          secondary: Text(
-                            '${n + 1}.',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          title: Text(
-                            item.text,
-                            style: TextStyle(
-                              decoration: item.done
-                                  ? TextDecoration.lineThrough
-                                  : null,
+                      ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        itemCount: list.length,
+                        onReorderItem: (from, to) {
+                          // ordinea nouă a rândurilor completate; cele goale rămân la final
+                          final ordered = List.of(list);
+                          ordered.insert(to, ordered.removeAt(from));
+                          final all = season.needsOf(c);
+                          final empty = all
+                              .where((x) => x.text.trim().isEmpty)
+                              .toList();
+                          all
+                            ..clear()
+                            ..addAll(ordered)
+                            ..addAll(empty);
+                          store.upsertSeason(season);
+                        },
+                        itemBuilder: (context, n) {
+                          final item = list[n];
+                          return SwipeToDelete(
+                            key: ValueKey(item.id),
+                            id: item.id,
+                            number: n + 1,
+                            text: item.text,
+                            onDelete: () {
+                              season.needsOf(c).remove(item);
+                              store.upsertSeason(season);
+                            },
+                            child: CheckboxListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              value: item.done,
+                              controlAffinity: ListTileControlAffinity.trailing,
+                              secondary: ReorderableDragStartListener(
+                                index: n,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.drag_indicator,
+                                      size: 20,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outline,
+                                    ),
+                                    SizedBox(
+                                      width: 28,
+                                      child: Text(
+                                        '${n + 1}.',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              title: Text(
+                                item.text,
+                                style: TextStyle(
+                                  decoration: item.done
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
+                              onChanged: (v) {
+                                item.done = v ?? false;
+                                store.upsertSeason(season);
+                              },
                             ),
-                          ),
-                          onChanged: (v) {
-                            item.done = v ?? false;
-                            store.upsertSeason(season);
-                          },
-                        ),
+                          );
+                        },
+                      ),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(

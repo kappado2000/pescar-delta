@@ -1,3 +1,4 @@
+import 'expense.dart';
 import 'need_item.dart';
 import 'place.dart';
 
@@ -51,7 +52,9 @@ class Season {
     this.permitStart,
     this.place = sfantuGheorghe,
     Map<NeedCategory, List<NeedItem>>? needs,
+    List<Expense>? expenses,
   }) : needs = needs ?? {},
+       expenses = expenses ?? [],
        participantIds = participantIds ?? [],
        boatIds = boatIds ?? [],
        purchased = purchased ?? {};
@@ -81,6 +84,9 @@ class Season {
   Map<NeedCategory, List<NeedItem>> needs;
 
   List<NeedItem> needsOf(NeedCategory c) => needs.putIfAbsent(c, () => []);
+
+  /// Cheltuielile sezonului (comune sau personale).
+  List<Expense> expenses;
 
   String get title => '${kind.label} $year';
   String get folderName => '$year-${kind.name}';
@@ -112,6 +118,7 @@ class Season {
       for (final e in needs.entries)
         e.key.name: e.value.map((i) => i.toJson()).toList(),
     },
+    'expenses': expenses.map((e) => e.toJson()).toList(),
   };
 
   factory Season.fromJson(Map<String, dynamic> j) => Season(
@@ -144,5 +151,9 @@ class Season {
               NeedItem.fromJson(Map<String, dynamic>.from(i)),
           ],
     },
+    expenses: [
+      for (final e in (j['expenses'] as List? ?? []))
+        Expense.fromJson(Map<String, dynamic>.from(e)),
+    ],
   );
 }

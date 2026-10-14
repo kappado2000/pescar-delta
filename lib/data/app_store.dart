@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/boat.dart';
 import '../models/catch_entry.dart';
+import '../models/expense.dart';
 import '../models/participant.dart';
 import '../models/permit_file.dart';
 import '../models/season.dart';
@@ -30,6 +31,7 @@ class AppStore extends ChangeNotifier {
   final List<CatchEntry> catches = [];
   final List<Spot> spots = [];
   final List<PermitFile> permitFiles = [];
+  final List<ExpensePreset> expensePresets = [];
 
   /// Vremea zilnică colectată: locație (`Place.key`) → zi (`yyyy-MM-dd`).
   final Map<String, Map<String, WeatherDay>> weatherLog = {};
@@ -47,6 +49,7 @@ class AppStore extends ChangeNotifier {
     _load('catches', catches, CatchEntry.fromJson);
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);
+    _load('expensePresets', expensePresets, ExpensePreset.fromJson);
     final rawLog = _box.get('weatherLog') as String?;
     if (rawLog != null) {
       final decoded = jsonDecode(rawLog);
@@ -63,6 +66,7 @@ class AppStore extends ChangeNotifier {
       }
     }
     await _seedOnce();
+    await _seedPresetsOnce();
     collectWeather(); // în fundal; fără semnal pur și simplu nu adaugă nimic
   }
 
@@ -108,6 +112,39 @@ class AppStore extends ChangeNotifier {
     );
     await _save('participants', participants);
     await _box.put('seeded', true);
+  }
+
+  Future<void> _seedPresetsOnce() async {
+    if (_box.get('presetsSeeded') == true) return;
+    const defaults = [
+      ('Benzină barcă', 'Combustibil'),
+      ('Motorină mașină', 'Transport'),
+      ('Mâncare', 'Mâncare-Băutură'),
+      ('Băutură', 'Mâncare-Băutură'),
+      ('Gheață', 'Mâncare-Băutură'),
+      ('Momeli', 'Momeli'),
+      ('Cazare', 'Cazare'),
+      ('Permise', 'Permise'),
+    ];
+    for (final (name, category) in defaults) {
+      expensePresets.add(
+        ExpensePreset(id: newId(), name: name, category: category),
+      );
+    }
+    await _save('expensePresets', expensePresets);
+    await _box.put('presetsSeeded', true);
+  }
+
+  // ---------- Presetări cheltuieli ----------
+  Future<void> upsertPreset(ExpensePreset p) async {
+    final i = expensePresets.indexWhere((e) => e.id == p.id);
+    i >= 0 ? expensePresets[i] = p : expensePresets.add(p);
+    await _save('expensePresets', expensePresets);
+  }
+
+  Future<void> deletePreset(String id) async {
+    expensePresets.removeWhere((p) => p.id == id);
+    await _save('expensePresets', expensePresets);
   }
 
   // ---------- Participanți ----------

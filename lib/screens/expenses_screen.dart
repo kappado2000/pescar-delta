@@ -13,9 +13,13 @@ import 'expense_presets_screen.dart';
 final _lei = NumberFormat.currency(
   locale: 'ro',
   symbol: 'lei',
-  decimalDigits: 2,
+  decimalDigits: 0,
 );
 String lei(double v) => _lei.format(v);
+
+/// Suma pentru câmpurile de scris: fără zecimale când e întreagă.
+String amountText(double v) =>
+    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
 final _when = DateFormat('d MMM yyyy, HH:mm');
 
@@ -113,9 +117,9 @@ class ExpensesScreen extends StatelessWidget {
     final list = season.expenses.toList()
       ..sort((a, b) => a.number.compareTo(b.number));
     b.writeln();
-    for (final e in list) {
+    for (final (i, e) in list.indexed) {
       b.writeln(
-        '#${e.number} ${_when.format(e.date)} · ${_title(e)} · ${lei(e.amount)}'
+        '${i + 1}. ${_when.format(e.date)} · ${_title(e)} · ${lei(e.amount)}'
         ' · ${name(e.paidBy)} · ${e.common ? 'comună' : 'proprie'}',
       );
     }
@@ -208,7 +212,7 @@ class _ExpenseListState extends State<_ExpenseList> {
         (_filter == null ? season.expenses : groups[_filter]!)
             .where((e) => _common == null || e.common == _common)
             .toList()
-          ..sort((a, b) => b.number.compareTo(a.number));
+          ..sort((a, b) => a.number.compareTo(b.number));
     double sum(bool common) => season.expenses
         .where((e) => e.common == common)
         .fold(0, (s, e) => s + e.amount);
@@ -304,7 +308,8 @@ class _ExpenseListState extends State<_ExpenseList> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
             children: [
-              for (final e in list) _ExpenseTile(season: season, expense: e),
+              for (final (i, e) in list.indexed)
+                _ExpenseTile(season: season, expense: e, number: i + 1),
             ],
           ),
         ),
@@ -317,13 +322,17 @@ class _ExpenseTile extends StatelessWidget {
   const _ExpenseTile({
     required this.season,
     required this.expense,
-    this.ownNumber,
+    required this.number,
+    this.showPayer = true,
   });
   final Season season;
   final Expense expense;
 
-  /// Numărul curent în lista participantului (în tab-ul „Pe participant”).
-  final int? ownNumber;
+  /// Numărul din listă (1., 2., 3.…).
+  final int number;
+
+  /// Arată cine a achitat-o (în lista unui participant e de prisos).
+  final bool showPayer;
 
   @override
   Widget build(BuildContext context) {
@@ -345,22 +354,14 @@ class _ExpenseTile extends StatelessWidget {
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Column(
-                  children: [
-                    Text(
-                      ownNumber != null ? '$ownNumber.' : '#${e.number}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: color,
-                        fontSize: 15,
-                      ),
-                    ),
-                    if (ownNumber != null)
-                      Text(
-                        '#${e.number}',
-                        style: TextStyle(fontSize: 10, color: color),
-                      ),
-                  ],
+                child: Text(
+                  '$number.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -377,7 +378,7 @@ class _ExpenseTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
-                      '${ownNumber == null ? 'Achitată de ${store.participant(e.paidBy)?.fullName ?? '?'} · ' : ''}'
+                      '${showPayer ? 'Achitată de ${store.participant(e.paidBy)?.fullName ?? '?'} · ' : ''}'
                       '${e.common ? 'comună, împărțită egal la ${e.sharedWith.length}' : 'cheltuială proprie'}',
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: color),
@@ -514,24 +515,13 @@ class _CommonList extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 40,
-                      child: Column(
-                        children: [
-                          Text(
-                            '${i + 1}.',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: Sea.ocean,
-                            ),
-                          ),
-                          Text(
-                            '#${e.number}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Sea.ocean,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        '${i + 1}.',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: Sea.ocean,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -752,7 +742,12 @@ class _PerParticipant extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         for (final (i, e) in list.indexed)
-          _ExpenseTile(season: season, expense: e, ownNumber: i + 1),
+          _ExpenseTile(
+            season: season,
+            expense: e,
+            number: i + 1,
+            showPayer: false,
+          ),
       ];
     }
 
@@ -790,14 +785,14 @@ class _PerParticipant extends StatelessWidget {
         'Partea lui din ce au achitat alții la comun',
         style: text.titleSmall,
       ),
-      for (final e in others)
+      for (final (i, e) in others.indexed)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Row(
             children: [
               SizedBox(
                 width: 40,
-                child: Text('#${e.number}', style: text.bodySmall),
+                child: Text('${i + 1}.', style: text.bodySmall),
               ),
               Expanded(
                 child: Text(
@@ -860,7 +855,7 @@ class _Settlement extends StatelessWidget {
               leading: CircleAvatar(
                 backgroundColor: Sea.sunset,
                 child: Text(
-                  '${i + 1}',
+                  '${i + 1}.',
                   style: const TextStyle(
                     color: Sea.navy,
                     fontWeight: FontWeight.bold,
@@ -948,7 +943,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
         );
     _desc = TextEditingController(text: _e.description);
     _amount = TextEditingController(
-      text: _e.amount == 0 ? '' : _e.amount.toStringAsFixed(2),
+      text: _e.amount == 0 ? '' : amountText(_e.amount),
     );
     _paidBy = _e.paidBy;
     _common = _e.common;
@@ -968,7 +963,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
       if (_common && _shared.isEmpty) {
         _shared.addAll(widget.season.participantIds);
       }
-      if (p.amount != null) _amount.text = p.amount!.toStringAsFixed(2);
+      if (p.amount != null) _amount.text = amountText(p.amount!);
     }
 
     rebuild ? setState(apply) : apply();
@@ -1043,11 +1038,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
       return;
     }
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          'Salvată #${_e.number} · ${_title(_e)} · ${lei(_e.amount)}',
-        ),
-      ),
+      SnackBar(content: Text('Salvată: ${_title(_e)} · ${lei(_e.amount)}')),
     );
     setState(() {
       _e = Expense(
@@ -1071,7 +1062,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text('Ștergi cheltuiala #${_e.number}?'),
+        title: const Text('Ștergi cheltuiala?'),
         content: Text(
           '${_title(_e)} · ${lei(_e.amount)} · ${_when.format(_e.date)}',
         ),
@@ -1106,7 +1097,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
         people.where((p) => p.id == _paidBy).firstOrNull?.fullName ?? '?';
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'Cheltuială nouă' : 'Cheltuiala #${_e.number}'),
+        title: Text(_isNew ? 'Cheltuială nouă' : 'Cheltuială'),
         actions: [
           if (!_isNew)
             IconButton(

@@ -59,7 +59,7 @@ Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
   final store = context.read<AppStore>();
   final name = TextEditingController(text: preset?.name ?? '');
   final amount = TextEditingController(
-    text: preset?.amount?.toStringAsFixed(2) ?? '',
+    text: preset?.amount == null ? '' : amountText(preset!.amount!),
   );
   var category = preset?.category ?? 'Altele';
   var common = preset?.common ?? true;

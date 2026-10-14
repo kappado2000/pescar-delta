@@ -143,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   childAspectRatio: 2.4,
                   children: [
                     _Action(
-                      icon: Icons.local_gas_station,
+                      icon: Icons.account_balance_wallet,
                       label: 'Cheltuială',
                       color: Sea.teal,
                       onTap: () => showQuickExpense(context, season),
@@ -235,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
         '${needs.where((i) => i.done).length}/${needs.length}',
         3,
       ),
-      row(Icons.payments_outlined, Sea.teal, 'Cheltuieli', lei(spent), 4),
+      row(Icons.account_balance_wallet_outlined, Sea.teal, 'Cheltuieli', lei(spent), 4),
       row(
         Icons.groups_outlined,
         Sea.deep,

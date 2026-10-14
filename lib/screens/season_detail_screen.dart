@@ -65,7 +65,7 @@ class SeasonDetailScreen extends StatelessWidget {
               Tab(icon: Icon(Icons.groups_outlined), text: 'Echipa'),
               Tab(icon: Icon(Icons.badge_outlined), text: 'Permise'),
               Tab(icon: Icon(Icons.checklist), text: 'Necesar'),
-              Tab(icon: Icon(Icons.payments_outlined), text: 'Cheltuieli'),
+              Tab(icon: Icon(Icons.account_balance_wallet_outlined), text: 'Cheltuieli'),
             ],
           ),
         ),
@@ -231,7 +231,7 @@ class _SummaryTab extends StatelessWidget {
           () => go(3),
         ),
         tile(
-          Icons.payments_outlined,
+          Icons.account_balance_wallet_outlined,
           Sea.teal,
           'Cheltuieli',
           lei(spent),
@@ -248,7 +248,7 @@ class _SummaryTab extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         FilledButton.icon(
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.account_balance_wallet),
           label: const Text('Cheltuială rapidă'),
           onPressed: () => showQuickExpense(context, season),
         ),
@@ -665,7 +665,7 @@ class _ExpensesCard extends StatelessWidget {
     return Card(
       color: Sea.teal.withValues(alpha: 0.12),
       child: ListTile(
-        leading: const Icon(Icons.payments_outlined, color: Sea.teal, size: 32),
+        leading: const Icon(Icons.account_balance_wallet_outlined, color: Sea.teal, size: 32),
         title: const Text('Cheltuieli'),
         subtitle: Text(
           season.expenses.isEmpty

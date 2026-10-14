@@ -7,6 +7,7 @@ import '../data/app_store.dart';
 import '../models/expense.dart';
 import '../models/season.dart';
 import '../theme.dart';
+import '../widgets/quick_expense_sheet.dart';
 import 'expense_presets_screen.dart';
 
 final _lei = NumberFormat.currency(
@@ -67,7 +68,7 @@ class ExpensesScreen extends StatelessWidget {
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => openExpenseEditor(context, season),
+          onPressed: () => showQuickExpense(context, season),
           icon: const Icon(Icons.add),
           label: const Text('Cheltuială'),
         ),
@@ -282,7 +283,7 @@ class _ExpenseListState extends State<_ExpenseList> {
                 TextButton.icon(
                   icon: const Icon(Icons.add),
                   label: const Text('Încă una'),
-                  onPressed: () => openExpenseEditor(
+                  onPressed: () => showQuickExpense(
                     context,
                     season,
                     preset:

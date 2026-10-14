@@ -13,6 +13,7 @@ import '../services/permit_catalog.dart';
 import '../models/need_item.dart';
 import '../theme.dart';
 import '../models/expense.dart';
+import '../widgets/quick_expense_sheet.dart';
 import 'expenses_screen.dart';
 import 'needs_screen.dart';
 import 'permit_buy_screen.dart';
@@ -321,7 +322,14 @@ class _ExpensesCard extends StatelessWidget {
               : 'Total ${lei(total)} · '
                     '${transfers == 0 ? 'toți achitați' : '$transfers transferuri de decontat'}',
         ),
-        trailing: const Icon(Icons.chevron_right),
+        // „+” mare: cheltuială rapidă direct de aici
+        trailing: IconButton.filled(
+          tooltip: 'Cheltuială rapidă',
+          iconSize: 30,
+          style: IconButton.styleFrom(backgroundColor: Sea.teal),
+          icon: const Icon(Icons.add),
+          onPressed: () => showQuickExpense(context, season),
+        ),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(

@@ -192,10 +192,10 @@ class AppStore extends ChangeNotifier {
       seasons.where((s) => !s.archived).toList()
         ..sort((a, b) => a.start.compareTo(b.start));
 
-  /// Arhiva, grupată pe ani (descrescător).
-  Map<int, List<Season>> get archivedByYear {
+  /// Istoricul: toate sezoanele, grupate pe ani (cei mai recenți primii).
+  Map<int, List<Season>> get seasonsByYear {
     final map = <int, List<Season>>{};
-    for (final s in seasons.where((s) => s.archived)) {
+    for (final s in seasons) {
       map.putIfAbsent(s.year, () => []).add(s);
     }
     for (final l in map.values) {
@@ -311,7 +311,35 @@ class AppStore extends ChangeNotifier {
     await _save('catches', catches);
   }
 
+  /// Copiază un video în `media/<captură>/` și întoarce calea relativă.
+  /// Pe web nu se pot păstra fișiere video → null.
+  Future<String?> saveCatchVideo(
+    String catchId,
+    Uint8List bytes,
+    String ext,
+  ) async {
+    if (kIsWeb) return null;
+    final relative = 'media/$catchId/${newId()}$ext';
+    final file = File('${await _docsDir()}/$relative');
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(bytes);
+    return relative;
+  }
+
+  Future<String?> mediaFilePath(String? relative) async =>
+      kIsWeb || relative == null ? null : '${await _docsDir()}/$relative';
+
+  Future<void> deleteMediaFile(String? relative) async {
+    final path = await mediaFilePath(relative);
+    if (path == null) return;
+    final f = File(path);
+    if (await f.exists()) await f.delete();
+  }
+
   Future<void> deleteCatch(String id) async {
+    for (final m in catches.where((c) => c.id == id).expand((c) => c.media)) {
+      await deleteMediaFile(m.path);
+    }
     catches.removeWhere((c) => c.id == id);
     await _save('catches', catches);
   }

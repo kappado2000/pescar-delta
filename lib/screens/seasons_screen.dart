@@ -30,7 +30,7 @@ class SeasonsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final active = store.activeSeasons;
-    final archive = store.archivedByYear;
+    final history = store.seasonsByYear;
     return Scaffold(
       appBar: SceneAppBar(
         title: 'Pescar Deltă',
@@ -102,21 +102,36 @@ class SeasonsScreen extends StatelessWidget {
               ),
             ),
           for (final s in active) _SeasonCard(season: s),
-          if (archive.isNotEmpty) ...[
+          if (history.isNotEmpty) ...[
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Text(
-                'Arhivă',
-                style: Theme.of(context).textTheme.titleMedium,
+              child: Row(
+                children: [
+                  const Icon(Icons.history),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Istoric · toate sezoanele',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
               ),
             ),
-            for (final entry in archive.entries)
+            for (final entry in history.entries)
               Card(
                 child: ExpansionTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
+                  initiallyExpanded: entry.key == DateTime.now().year,
+                  leading: Icon(
+                    entry.key < DateTime.now().year
+                        ? Icons.inventory_2_outlined
+                        : Icons.event_note,
+                  ),
                   title: Text('${entry.key}'),
-                  subtitle: Text('${entry.value.length} sezoane'),
+                  subtitle: Text(
+                    '${entry.value.length} sezoane · '
+                    '${entry.value.map((s) => s.place.name).toSet().join(', ')}'
+                    '${entry.key < DateTime.now().year ? ' · arhivat' : ''}',
+                  ),
                   children: [
                     for (final s in entry.value) _SeasonTile(season: s),
                   ],
@@ -279,12 +294,24 @@ class _SeasonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final store = context.read<AppStore>();
+    final catches = store.catches.where((c) => season.contains(c.date));
+    final kg = catches.fold<double>(0, (s, c) => s + (c.weightKg ?? 0));
+    final spent = season.expenses.fold<double>(0, (s, e) => s + e.amount);
     return ListTile(
-      title: Text(season.kind.label),
+      leading: Icon(
+        season.kind == SeasonKind.primavara
+            ? Icons.local_florist_outlined
+            : Icons.eco_outlined,
+      ),
+      title: Text('${season.kind.label} · ${season.place.name}'),
       subtitle: Text(
         '${_dayMonth.format(season.start)} – ${_dayMonth.format(season.end)}'
-        ' · ${season.participantIds.length} participanți',
+        ' · ${season.participantIds.length} participanți\n'
+        '${catches.length} capturi · ${kg.toStringAsFixed(1)} kg'
+        '${spent > 0 ? ' · cheltuieli ${spent.toStringAsFixed(0)} lei' : ''}',
       ),
+      isThreeLine: true,
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _open(context, season),
     );

@@ -165,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _Action(
                       icon: Icons.checklist,
                       label: 'Necesar',
-                      color: Sea.sunset,
+                      color: needsColor(context),
                       onTap: () => _open(season, 3),
                     ),
                   ],
@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       row(
         Icons.checklist,
-        Sea.sunset,
+        needsColor(context),
         'Necesar',
         '${needs.where((i) => i.done).length}/${needs.length}',
         3,
@@ -246,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       row(
         Icons.groups_outlined,
-        Sea.deep,
+        Sea.ocean,
         'Echipa',
         '${season.participantIds.length} pers. · ${season.boatIds.length} bărci',
         1,

@@ -45,12 +45,12 @@ class NeedCategoriesScreen extends StatelessWidget {
                       index: i,
                       child: CircleAvatar(
                         radius: 15,
-                        backgroundColor: Sea.sunset,
+                        backgroundColor: needsColor(context),
                         child: Text(
                           '${i + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Sea.navy,
+                            color: needsOnColor(context),
                           ),
                         ),
                       ),

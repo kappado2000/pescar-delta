@@ -1135,7 +1135,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
               children: [
                 for (final p in store.expensePresets)
                   ChoiceChip(
-                    avatar: Icon(expenseIcon(p.category, p.name), size: 18),
+                    avatar: Icon(presetIcon(p), size: 18),
                     label: Text(p.name),
                     selected: _presetId == p.id,
                     onSelected: (_) => _applyPreset(p),

@@ -4,8 +4,41 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import '../models/expense.dart';
 import '../models/season.dart';
+import '../screens/expense_presets_screen.dart';
 import '../screens/expenses_screen.dart';
 import '../theme.dart';
+
+/// Iconițele din care se poate alege pentru un card.
+const expenseIconChoices = <String, IconData>{
+  'benzina': Icons.local_gas_station,
+  'masina': Icons.directions_car,
+  'barca': Icons.directions_boat,
+  'mancare': Icons.restaurant,
+  'paine': Icons.bakery_dining,
+  'gratar': Icons.outdoor_grill,
+  'cumparaturi': Icons.shopping_cart,
+  'bautura': Icons.local_drink,
+  'bere': Icons.sports_bar,
+  'vin': Icons.wine_bar,
+  'cafea': Icons.local_cafe,
+  'gheata': Icons.ac_unit,
+  'momeli': Icons.phishing,
+  'echipament': Icons.construction,
+  'cazare': Icons.hotel,
+  'cort': Icons.holiday_village,
+  'permis': Icons.badge,
+  'medicamente': Icons.medical_services,
+  'baterii': Icons.battery_charging_full,
+  'ulei': Icons.oil_barrel,
+  'taxe': Icons.receipt_long,
+  'bani': Icons.payments,
+  'cadou': Icons.card_giftcard,
+  'altele': Icons.more_horiz,
+};
+
+/// Iconița unui card: cea aleasă, altfel automată după nume / categorie.
+IconData presetIcon(ExpensePreset p) =>
+    expenseIconChoices[p.icon] ?? expenseIcon(p.category, p.name);
 
 String _fold(String s) => s
     .toLowerCase()
@@ -172,15 +205,53 @@ class _QuickExpenseState extends State<_QuickExpense> {
     });
   }
 
+  bool _belongs(Expense e, ExpensePreset p) =>
+      (p.id.isNotEmpty && e.presetId == p.id) ||
+      e.description.trim().toLowerCase() == p.name.trim().toLowerCase();
+
   /// Totalul cheltuit în sezon pe un bun (după presetare sau după nume).
   (double, int) _totalFor(ExpensePreset p) {
-    final name = p.name.trim().toLowerCase();
+    final list = widget.season.expenses.where((e) => _belongs(e, p));
+    return (list.fold(0.0, (s, e) => s + e.amount), list.length);
+  }
+
+  /// Ce nu ține de niciun card („Altele”).
+  (double, int) _totalOthers(List<ExpensePreset> presets) {
     final list = widget.season.expenses.where(
-      (e) =>
-          (p.id.isNotEmpty && e.presetId == p.id) ||
-          (e.presetId == null && e.description.trim().toLowerCase() == name),
+      (e) => !presets.any((p) => _belongs(e, p)),
     );
     return (list.fold(0.0, (s, e) => s + e.amount), list.length);
+  }
+
+  String _sub((double, int) t) => switch (t) {
+    (_, 0) => 'nimic încă',
+    (final sum, final n) => '${lei(sum)} · $n×',
+  };
+
+  bool _editing = false;
+
+  Future<void> _deletePreset(ExpensePreset p) async {
+    final store = context.read<AppStore>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Ștergi cardul „${p.name}”?'),
+        content: const Text(
+          'Cheltuielile deja făcute rămân și trec la soldul cardului „Altele”.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Anulează'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Șterge'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await store.deletePreset(p.id);
   }
 
   @override
@@ -197,10 +268,35 @@ class _QuickExpenseState extends State<_QuickExpense> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Ce s-a cumpărat?',
-            style: Theme.of(context).textTheme.headlineSmall,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _editing ? 'Editează cardurile' : 'Ce s-a cumpărat?',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              _editing
+                  ? FilledButton(
+                      onPressed: () => setState(() => _editing = false),
+                      child: const Text('Gata'),
+                    )
+                  : TextButton.icon(
+                      onPressed: () => setState(() => _editing = true),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Editează'),
+                    ),
+            ],
           ),
+          if (_editing)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '✎ modifică · ✕ șterge · ține apăsat pe un card și trage-l '
+                'peste altul ca să schimbi ordinea',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           const SizedBox(height: 12),
           Expanded(
             child: GridView.count(
@@ -209,25 +305,44 @@ class _QuickExpenseState extends State<_QuickExpense> {
               crossAxisSpacing: 10,
               childAspectRatio: 0.95,
               children: [
-                for (final p in presets)
-                  _BigTile(
-                    icon: expenseIcon(p.category, p.name),
-                    label: p.name,
-                    sub: switch (_totalFor(p)) {
-                      (_, 0) => 'nimic încă',
-                      (final sum, final n) => '${lei(sum)} · $n×',
-                    },
-                    color: p.common ? Sea.ocean : Sea.sunset,
-                    onTap: () => _choose(p),
-                  ),
+                for (final (i, p) in presets.indexed)
+                  _editing
+                      ? _EditableTile(
+                          key: ValueKey(p.id),
+                          index: i,
+                          onMove: (from) => store.movePreset(from, i),
+                          onEdit: () => editPreset(context, p),
+                          onDelete: () => _deletePreset(p),
+                          child: _BigTile(
+                            icon: presetIcon(p),
+                            label: p.name,
+                            sub: _sub(_totalFor(p)),
+                            color: p.common ? Sea.ocean : Sea.sunset,
+                            onTap: () => editPreset(context, p),
+                          ),
+                        )
+                      : _BigTile(
+                          icon: presetIcon(p),
+                          label: p.name,
+                          sub: _sub(_totalFor(p)),
+                          color: p.common ? Sea.ocean : Sea.sunset,
+                          onTap: () => _choose(p),
+                        ),
                 _BigTile(
-                  icon: Icons.edit_note,
-                  label: 'Altceva\n(formular)',
+                  icon: Icons.more_horiz,
+                  label: 'Altele',
+                  sub: _sub(_totalOthers(presets)),
                   color: Colors.blueGrey,
                   onTap: () {
                     Navigator.pop(context);
                     openExpenseEditor(context, widget.season);
                   },
+                ),
+                _BigTile(
+                  icon: Icons.add,
+                  label: 'Card nou',
+                  color: Sea.teal,
+                  onTap: () => editPreset(context, null),
                 ),
               ],
             ),
@@ -257,7 +372,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => setState(() => _preset = null),
               ),
-              Icon(expenseIcon(p.category, p.name), color: color, size: 28),
+              Icon(presetIcon(p), color: color, size: 28),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -429,6 +544,78 @@ class _BigTile extends StatelessWidget {
                 Text(sub!, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card în mod editare: butoane ✎ / ✕ și mutare prin ținere apăsat + tragere.
+class _EditableTile extends StatelessWidget {
+  const _EditableTile({
+    super.key,
+    required this.index,
+    required this.onMove,
+    required this.onEdit,
+    required this.onDelete,
+    required this.child,
+  });
+  final int index;
+  final void Function(int from) onMove;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final Widget child;
+
+  Widget _badge(IconData icon, Color color, VoidCallback onTap) => Material(
+    color: color,
+    shape: const CircleBorder(),
+    elevation: 2,
+    child: InkWell(
+      customBorder: const CircleBorder(),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Icon(icon, size: 16, color: Colors.white),
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final tile = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(child: child),
+        Positioned(
+          top: -6,
+          left: -6,
+          child: _badge(Icons.edit, Sea.ocean, onEdit),
+        ),
+        Positioned(
+          top: -6,
+          right: -6,
+          child: _badge(Icons.close, Sea.coral, onDelete),
+        ),
+      ],
+    );
+    return DragTarget<int>(
+      onWillAcceptWithDetails: (d) => d.data != index,
+      onAcceptWithDetails: (d) => onMove(d.data),
+      builder: (context, candidate, _) => LongPressDraggable<int>(
+        data: index,
+        feedback: SizedBox(
+          width: 110,
+          height: 115,
+          child: Opacity(
+            opacity: 0.85,
+            child: Material(color: Colors.transparent, child: child),
+          ),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: child),
+        child: AnimatedScale(
+          scale: candidate.isNotEmpty ? 1.08 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          child: tile,
         ),
       ),
     );

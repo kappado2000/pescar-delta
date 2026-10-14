@@ -165,7 +165,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
     await store.upsertSeason(season);
     messenger.showSnackBar(
       SnackBar(
-        content: Text('✓ #${e.number} ${p.name} · ${lei(e.amount)}'),
+        content: Text('✓ ${p.name} · ${lei(e.amount)}'),
         duration: const Duration(seconds: 2),
       ),
     );

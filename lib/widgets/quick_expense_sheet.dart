@@ -33,6 +33,29 @@ const expenseIconChoices = <String, IconData>{
   'taxe': Icons.receipt_long,
   'bani': Icons.payments,
   'cadou': Icons.card_giftcard,
+  'peste': Icons.set_meal,
+  'restaurant': Icons.restaurant_menu,
+  'pizza': Icons.local_pizza,
+  'carne': Icons.kebab_dining,
+  'dulciuri': Icons.icecream,
+  'taxa_pod': Icons.toll,
+  'bac': Icons.directions_ferry,
+  'parcare': Icons.local_parking,
+  'autostrada': Icons.add_road,
+  'taxi': Icons.local_taxi,
+  'autobuz': Icons.directions_bus,
+  'tren': Icons.train,
+  'inchiriere_barca': Icons.sailing,
+  'camping': Icons.cabin,
+  'foc': Icons.local_fire_department,
+  'butelie': Icons.propane_tank,
+  'generator': Icons.power,
+  'farmacie': Icons.local_pharmacy,
+  'apa': Icons.water_drop,
+  'igiena': Icons.soap,
+  'telefon': Icons.phone_android,
+  'ghid': Icons.explore,
+  'magazin': Icons.store,
   'altele': Icons.more_horiz,
 };
 
@@ -55,7 +78,33 @@ String _fold(String s) => s
 IconData expenseIcon(String category, [String name = '']) {
   final n = _fold(name);
   bool has(List<String> words) => words.any(n.contains);
+  final tokens = n.split(RegExp(r'[^a-z0-9]+')).toSet();
+  bool word(List<String> words) => words.any(tokens.contains);
   if (has(['gheata', 'ghiata'])) return Icons.ac_unit;
+  if (word(['pod', 'poduri'])) return Icons.toll;
+  if (word(['bac', 'bacul']) || has(['feribot'])) return Icons.directions_ferry;
+  if (has(['parcare'])) return Icons.local_parking;
+  if (has(['autostrada', 'rovinieta', 'vigneta'])) return Icons.add_road;
+  if (has(['taxi'])) return Icons.local_taxi;
+  if (has(['autobuz', 'microbuz', 'transfer'])) return Icons.directions_bus;
+  if (has(['tren'])) return Icons.train;
+  if (has(['inchiriere', 'inchiriat'])) return Icons.sailing;
+  if (has(['restaurant', 'bistro', 'terasa'])) {
+    return Icons.restaurant_menu;
+  }
+  if (has(['peste', 'saramura', 'ciorba'])) return Icons.set_meal;
+  if (has(['pizza'])) return Icons.local_pizza;
+  if (has(['farmac', 'medicament'])) return Icons.local_pharmacy;
+  if (has(['lemne', 'carbuni', 'mangal']) || word(['foc'])) {
+    return Icons.local_fire_department;
+  }
+  if (has(['butelie']) || word(['gaz'])) return Icons.propane_tank;
+  if (has(['generator', 'curent'])) return Icons.power;
+  if (has(['camping'])) return Icons.cabin;
+  if (has(['ghid'])) return Icons.explore;
+  if (has(['sapun', 'igiena', 'hartie', 'servetele'])) return Icons.soap;
+  if (has(['telefon', 'internet', 'cartela'])) return Icons.phone_android;
+  if (has(['magazin', 'market'])) return Icons.store;
   if (has(['bere'])) return Icons.sports_bar;
   if (has(['vin'])) return Icons.wine_bar;
   if (has(['cafea'])) return Icons.local_cafe;

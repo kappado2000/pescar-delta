@@ -236,7 +236,13 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
       ? (DateTime(y, 3, 1), DateTime(y, 4, 5))
       : (DateTime(y, 6, 10), DateTime(y, 11, 30));
   var start = season?.start ?? defaults(kind, year).$1;
-  var end = season?.end ?? defaults(kind, year).$2;
+  var end = season?.end ?? Season.endFor(start, AccessDuration.zile7);
+  // durata aleasă: 7 zile implicit la un sezon nou
+  AccessDuration? duration = season == null
+      ? AccessDuration.zile7
+      : AccessDuration.values
+            .where((d) => Season.endFor(start, d) == end)
+            .firstOrNull;
   // locația: a sezonului editat, altfel a celui mai recent sezon
   var place =
       season?.place ??
@@ -260,9 +266,14 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
           setState(() {
             if (isStart) {
               start = d;
-              if (end.isBefore(start)) end = start;
+              if (duration != null) {
+                end = Season.endFor(start, duration!);
+              } else if (end.isBefore(start)) {
+                end = start;
+              }
             } else {
               end = d.isBefore(start) ? start : d;
+              duration = null; // sfârșit ales manual
             }
           });
         }
@@ -306,10 +317,26 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                 subtitle: Text(DateFormat('d MMMM yyyy').format(start)),
                 onTap: () => pick(true),
               ),
+              Wrap(
+                spacing: 6,
+                children: [
+                  for (final d in AccessDuration.values)
+                    ChoiceChip(
+                      label: Text(d.label),
+                      selected: duration == d,
+                      onSelected: (_) => setState(() {
+                        duration = d;
+                        end = Season.endFor(start, d);
+                      }),
+                    ),
+                ],
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.stop),
-                title: const Text('Sfârșit'),
+                title: Text(
+                  'Sfârșit (${end.difference(start).inDays + 1} zile)',
+                ),
                 subtitle: Text(DateFormat('d MMMM yyyy').format(end)),
                 onTap: () => pick(false),
               ),
@@ -368,6 +395,11 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                   ..start = start
                   ..end = end
                   ..place = place;
+                if (duration != null) {
+                  s
+                    ..accessDuration = duration!
+                    ..permitStart = start;
+                }
                 await store.upsertSeason(s);
                 if (ctx.mounted) Navigator.pop(ctx);
               },

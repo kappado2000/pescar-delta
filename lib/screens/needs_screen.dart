@@ -160,13 +160,13 @@ class _TabLabel extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 10,
-          backgroundColor: Sea.sunset,
+          backgroundColor: needsColor(context),
           child: Text(
             '$index',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Sea.navy,
+              color: needsOnColor(context),
             ),
           ),
         ),

@@ -102,6 +102,16 @@ ThemeData buildTheme(Brightness brightness) {
   );
 }
 
+/// Culoarea „Necesar”: maro pe tema luminoasă, portocaliu pe cea dark.
+Color needsColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? Sea.sunset
+    : const Color(0xFF8B5A2B);
+
+/// Textul de pe insignele „Necesar” (numerele categoriilor).
+Color needsOnColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark ? Sea.navy : Colors.white;
+
 /// Culoare stabilă pentru fiecare specie (aceeași în toate ecranele).
 Color speciesColor(String species) {
   const palette = [

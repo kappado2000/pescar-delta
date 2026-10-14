@@ -207,7 +207,7 @@ class _SummaryTab extends StatelessWidget {
         ),
         tile(
           Icons.groups_outlined,
-          Sea.deep,
+          Sea.ocean,
           'Echipa',
           '${season.participantIds.length} + ${season.boatIds.length}',
           '${season.participantIds.length} participanți · ${season.boatIds.length} bărci',
@@ -227,7 +227,7 @@ class _SummaryTab extends StatelessWidget {
         ),
         tile(
           Icons.checklist,
-          Sea.sunset,
+          needsColor(context),
           'Necesar',
           '$needsDone/${needs.length}',
           needs.isEmpty ? 'Nimic notat încă' : 'bifate',
@@ -500,11 +500,11 @@ class _NeedsCard extends StatelessWidget {
     );
 
     return Card(
-      color: Sea.sunset.withValues(alpha: 0.12),
+      color: needsColor(context).withValues(alpha: 0.12),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         initiallyExpanded: expanded,
-        leading: const Icon(Icons.checklist, color: Sea.sunset, size: 32),
+        leading: Icon(Icons.checklist, color: needsColor(context), size: 32),
         title: const Text('Necesar pentru sezon'),
         subtitle: Text(
           items.isEmpty
@@ -525,13 +525,13 @@ class _NeedsCard extends StatelessWidget {
                     dense: true,
                     leading: CircleAvatar(
                       radius: 13,
-                      backgroundColor: Sea.sunset,
+                      backgroundColor: needsColor(context),
                       child: Text(
                         '${i + 1}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Sea.navy,
+                          color: needsOnColor(context),
                         ),
                       ),
                     ),

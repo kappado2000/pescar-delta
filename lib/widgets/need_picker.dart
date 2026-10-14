@@ -228,13 +228,13 @@ class _SectionHeader extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 11,
-            backgroundColor: Sea.sunset,
+            backgroundColor: needsColor(context),
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Sea.navy,
+                color: needsOnColor(context),
               ),
             ),
           ),

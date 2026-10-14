@@ -60,9 +60,17 @@ class Expense {
     required this.sharedWith,
     required this.date,
     this.category = 'Altele',
+    this.number = 0,
+    this.presetId,
   });
 
   final String id;
+
+  /// Numărul curent în sezon (#1, #2…), dat la înregistrare.
+  int number;
+
+  /// Presetarea din care a fost creată (ex. „Benzină barcă”), dacă e cazul.
+  String? presetId;
   String description;
 
   /// Suma în lei.
@@ -90,6 +98,8 @@ class Expense {
     'sharedWith': sharedWith,
     'date': date.toIso8601String(),
     'category': category,
+    'number': number,
+    'presetId': presetId,
   };
 
   factory Expense.fromJson(Map<String, dynamic> j) => Expense(
@@ -101,7 +111,21 @@ class Expense {
     sharedWith: List<String>.from(j['sharedWith'] ?? []),
     date: DateTime.parse(j['date']),
     category: j['category'] ?? 'Altele',
+    number: j['number'] ?? 0,
+    presetId: j['presetId'],
   );
+}
+
+/// Dă numere curente cheltuielilor care nu au (în ordinea datei) și
+/// întoarce următorul număr liber.
+int numberExpenses(List<Expense> expenses) {
+  var next = expenses.fold<int>(0, (m, e) => e.number > m ? e.number : m) + 1;
+  final missing = expenses.where((e) => e.number == 0).toList()
+    ..sort((a, b) => a.date.compareTo(b.date));
+  for (final e in missing) {
+    e.number = next++;
+  }
+  return next;
 }
 
 /// Situația unui participant în sezon.

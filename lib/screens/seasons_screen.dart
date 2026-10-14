@@ -458,6 +458,16 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                                   .first
                                   .participantIds,
                       ),
+                      // bărcile sezonului anterior (la primul sezon: toate)
+                      boatIds: List.of(
+                        store.seasons.isEmpty
+                            ? store.boats.map((b) => b.id)
+                            : (store.seasons.toList()..sort(
+                                    (a, b) => b.start.compareTo(a.start),
+                                  ))
+                                  .first
+                                  .boatIds,
+                      ),
                     );
                 s
                   ..year = year

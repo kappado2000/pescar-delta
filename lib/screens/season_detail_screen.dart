@@ -210,6 +210,25 @@ class SeasonDetailScreen extends StatelessWidget {
               ),
             ),
           for (final t in tasks) _TaskTile(season: season, task: t),
+          // bărci introduse, dar nebifate în sezon → fără permis
+          for (final b in store.boats.where(
+            (b) => !season.boatIds.contains(b.id),
+          ))
+            Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: ListTile(
+                leading: const Icon(Icons.directions_boat_outlined),
+                title: Text('Barca „${b.denumire}” nu e bifată în sezon'),
+                subtitle: const Text('Nu are permis de ambarcațiune.'),
+                trailing: FilledButton(
+                  onPressed: () {
+                    season.boatIds.add(b.id);
+                    store.upsertSeason(season);
+                  },
+                  child: const Text('Bifează'),
+                ),
+              ),
+            ),
           const SizedBox(height: 20),
 
           // ---------- Folderul permise ----------

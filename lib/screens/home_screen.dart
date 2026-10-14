@@ -137,6 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
+                  // fără spațiul automat de jos (al bannerului) — altfel apare un gol mare
+                  padding: EdgeInsets.zero,
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,

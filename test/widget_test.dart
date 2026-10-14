@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pescar_delta/models/boat.dart';
+import 'package:pescar_delta/models/need_item.dart';
 import 'package:pescar_delta/models/participant.dart';
 import 'package:pescar_delta/models/season.dart';
 import 'package:pescar_delta/services/permit_catalog.dart';
@@ -70,6 +71,18 @@ void main() {
       boats: [],
     );
     expect(tasks.every((t) => t.missing.contains('ziua de început')), isTrue);
+  });
+
+  test('lista de necesar se salvează și se reîncarcă', () {
+    final s = season();
+    s.needsOf(NeedCategory.momeli).add(NeedItem(id: 'n1', text: 'Porumb'));
+    s
+        .needsOf(NeedCategory.probleme)
+        .add(NeedItem(id: 'n2', text: 'Motor', done: true));
+    final back = Season.fromJson(s.toJson());
+    expect(back.needsOf(NeedCategory.momeli).single.text, 'Porumb');
+    expect(back.needsOf(NeedCategory.probleme).single.done, isTrue);
+    expect(back.needsOf(NeedCategory.tinuta), isEmpty);
   });
 
   test('sezoanele din anii trecuți sunt arhivate', () {

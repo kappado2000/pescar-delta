@@ -1,3 +1,4 @@
+import 'need_item.dart';
 import 'place.dart';
 
 enum SeasonKind {
@@ -49,7 +50,9 @@ class Season {
     this.notes = '',
     this.permitStart,
     this.place = sfantuGheorghe,
-  }) : participantIds = participantIds ?? [],
+    Map<NeedCategory, List<NeedItem>>? needs,
+  }) : needs = needs ?? {},
+       participantIds = participantIds ?? [],
        boatIds = boatIds ?? [],
        purchased = purchased ?? {};
 
@@ -73,6 +76,11 @@ class Season {
 
   /// Locația sezonului (ex. Sfântu Gheorghe, Crișan) — pentru vreme.
   Place place;
+
+  /// Pagina „Necesar”: liste numerotate pe categorii.
+  Map<NeedCategory, List<NeedItem>> needs;
+
+  List<NeedItem> needsOf(NeedCategory c) => needs.putIfAbsent(c, () => []);
 
   String get title => '${kind.label} $year';
   String get folderName => '$year-${kind.name}';
@@ -100,6 +108,10 @@ class Season {
     'notes': notes,
     'permitStart': permitStart?.toIso8601String(),
     'place': {'name': place.name, 'lat': place.lat, 'lng': place.lng},
+    'needs': {
+      for (final e in needs.entries)
+        e.key.name: e.value.map((i) => i.toJson()).toList(),
+    },
   };
 
   factory Season.fromJson(Map<String, dynamic> j) => Season(
@@ -124,5 +136,13 @@ class Season {
             (j['place']['lat'] as num).toDouble(),
             (j['place']['lng'] as num).toDouble(),
           ),
+    needs: {
+      for (final c in NeedCategory.values)
+        if ((j['needs'] as Map?)?[c.name] case final List items)
+          c: [
+            for (final i in items)
+              NeedItem.fromJson(Map<String, dynamic>.from(i)),
+          ],
+    },
   );
 }

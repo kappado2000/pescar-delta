@@ -393,8 +393,11 @@ class SceneAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     const shadow = [Shadow(blurRadius: 8, color: Colors.black54)];
+    // titlul și acțiunile stau sus; restul înălțimii rămâne pentru peisaj
+    final toolbar = subtitle == null ? kToolbarHeight : 68.0;
+    final rest = height - toolbar;
     return AppBar(
-      toolbarHeight: height,
+      toolbarHeight: toolbar,
       backgroundColor: Sea.navy,
       flexibleSpace: Stack(
         fit: StackFit.expand,
@@ -416,7 +419,7 @@ class SceneAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
-      titleSpacing: 20,
+      titleSpacing: 16,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -442,15 +445,21 @@ class SceneAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: actions,
-      bottom: bottom == null
-          ? null
-          : PreferredSize(
-              preferredSize: bottom!.preferredSize,
-              child: ColoredBox(
+      bottom: PreferredSize(
+        preferredSize: Size.fromHeight(
+          rest + (bottom?.preferredSize.height ?? 0),
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: rest),
+            if (bottom != null)
+              ColoredBox(
                 color: Sea.navy.withValues(alpha: 0.55),
                 child: bottom,
               ),
-            ),
+          ],
+        ),
+      ),
     );
   }
 }

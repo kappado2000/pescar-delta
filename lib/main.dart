@@ -24,8 +24,10 @@ class PescarDeltaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.select<AppStore, ThemeMode>((s) => s.themeMode);
     return MaterialApp(
       title: 'Pescar Deltă',
+      themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),

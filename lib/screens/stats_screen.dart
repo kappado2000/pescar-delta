@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import 'home_shell.dart';
 import '../models/catch_entry.dart';
 import '../models/participant.dart';
 import '../services/weather_service.dart';
@@ -167,7 +168,7 @@ class _ParticipantsStats extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
       children: [
         Text(
           '${enrolled.length} participanți înscriși',
@@ -236,7 +237,7 @@ class _DailyStats extends StatelessWidget {
     }
     final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
       children: [
         for (final d in days)
           Card(
@@ -337,7 +338,7 @@ class _SpeciesTable extends StatelessWidget {
 
     const bold = TextStyle(fontWeight: FontWeight.bold);
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
       child: Card(
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -444,7 +445,7 @@ class _StatsBody extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
       children: [
         Text(title, style: text.titleMedium),
         const SizedBox(height: 8),

@@ -9,6 +9,8 @@ import '../data/app_store.dart';
 import '../models/catch_entry.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
+import '../theme.dart';
+import '../widgets/delta_scene.dart';
 
 final _dateTime = DateFormat('d MMM yyyy, HH:mm');
 
@@ -31,7 +33,13 @@ class _CatchesScreenState extends State<CatchesScreen> {
         .where((c) => _species == null || c.species == _species)
         .toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Jurnal de capturi')),
+      appBar: SceneAppBar(
+        title: 'Jurnal de capturi',
+        subtitle: store.catches.isEmpty
+            ? 'Prima captură te așteaptă'
+            : '${store.catches.length} capturi · '
+                  '${store.catches.fold<double>(0, (s, c) => s + (c.weightKg ?? 0)).toStringAsFixed(1)} kg',
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => openCatchEditor(context),
         icon: const Icon(Icons.add_a_photo_outlined),
@@ -113,12 +121,15 @@ class _CatchCard extends StatelessWidget {
                       fit: BoxFit.cover,
                     )
                   : Container(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      child: const Icon(Icons.set_meal, size: 36),
+                      color: speciesColor(c.species).withValues(alpha: 0.15),
+                      child: Icon(
+                        Icons.set_meal,
+                        size: 40,
+                        color: speciesColor(c.species),
+                      ),
                     ),
             ),
+            Container(width: 4, height: 92, color: speciesColor(c.species)),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),

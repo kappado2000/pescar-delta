@@ -8,8 +8,18 @@ import '../services/permit_catalog.dart';
 import 'boats_screen.dart';
 import 'participants_screen.dart';
 import 'season_detail_screen.dart';
+import '../theme.dart';
+import '../widgets/delta_scene.dart';
 
 final _dayMonth = DateFormat('d MMM');
+
+String _greeting() {
+  final h = DateTime.now().hour;
+  if (h >= 5 && h < 11) return 'Bună dimineața, fir întins!';
+  if (h >= 11 && h < 18) return 'Bună ziua, fir întins!';
+  if (h >= 18 && h < 22) return 'Bună seara, fir întins!';
+  return 'Noapte bună, pescarule!';
+}
 
 class SeasonsScreen extends StatelessWidget {
   const SeasonsScreen({super.key});
@@ -20,8 +30,11 @@ class SeasonsScreen extends StatelessWidget {
     final active = store.activeSeasons;
     final archive = store.archivedByYear;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pescar Deltă'),
+      appBar: SceneAppBar(
+        title: 'Pescar Deltă',
+        subtitle:
+            '${_greeting()} · ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
+        height: 170,
         actions: [
           IconButton(
             tooltip: 'Participanți',
@@ -179,6 +192,11 @@ class _SeasonCard extends StatelessWidget {
         : now.isBefore(season.start)
         ? 'Începe în ${season.start.difference(now).inDays + 1} zile'
         : 'Încheiat';
+    final statusColor = season.contains(now)
+        ? Sea.teal
+        : now.isBefore(season.start)
+        ? Sea.sunset
+        : Colors.blueGrey;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -202,7 +220,24 @@ class _SeasonCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                  Chip(label: Text(status)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -214,7 +249,10 @@ class _SeasonCard extends StatelessWidget {
               const SizedBox(height: 12),
               LinearProgressIndicator(
                 value: tasks.isEmpty ? 0 : done / tasks.length,
-                minHeight: 6,
+                color: done == tasks.length && tasks.isNotEmpty
+                    ? Sea.good
+                    : Sea.ocean,
+                minHeight: 8,
                 borderRadius: BorderRadius.circular(3),
               ),
               const SizedBox(height: 4),

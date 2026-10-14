@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
 import '../models/catch_entry.dart';
+import '../models/participant.dart';
+import '../theme.dart';
+import '../widgets/delta_scene.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -39,29 +42,351 @@ class _StatsScreenState extends State<StatsScreen> {
       return store.season(_filter)?.contains(c.date) ?? false;
     }).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistici'),
-        actions: [
-          PopupMenuButton<String?>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (v) => setState(() => _filter = v),
-            itemBuilder: (_) => [
-              for (final e in options.entries)
-                CheckedPopupMenuItem(
-                  value: e.key,
-                  checked: e.key == _filter,
-                  child: Text(e.value),
-                ),
+    // Participanții înscriși în sezoanele din filtru.
+    final filterSeasons = store.seasons.where((s) {
+      if (_filter == null) return true;
+      if (_filter!.startsWith('an:')) {
+        return s.year == int.parse(_filter!.substring(3));
+      }
+      return s.id == _filter;
+    });
+    final enrolledIds = {
+      for (final s in filterSeasons) ...s.participantIds,
+      for (final c in list)
+        if (c.participantId != null) c.participantId!,
+    };
+    final enrolled = store.participants
+        .where((p) => enrolledIds.contains(p.id))
+        .toList();
+
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: SceneAppBar(
+          title: 'Statistici',
+          subtitle: options[_filter],
+          height: 112,
+          time: SceneTime.dusk,
+          bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              Tab(text: 'Rezumat'),
+              Tab(text: 'Participanți'),
+              Tab(text: 'Pe zile'),
+              Tab(text: 'Sortiment'),
             ],
           ),
-        ],
+          actions: [
+            PopupMenuButton<String?>(
+              icon: const Icon(Icons.filter_list),
+              onSelected: (v) => setState(() => _filter = v),
+              itemBuilder: (_) => [
+                for (final e in options.entries)
+                  CheckedPopupMenuItem(
+                    value: e.key,
+                    checked: e.key == _filter,
+                    child: Text(e.value),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        body: TabBarView(
+          children: [
+            list.isEmpty
+                ? const _Empty()
+                : _StatsBody(catches: list, title: options[_filter]!),
+            _ParticipantsStats(catches: list, enrolled: enrolled),
+            list.isEmpty ? const _Empty() : _DailyStats(catches: list),
+            list.isEmpty ? const _Empty() : _SpeciesTable(catches: list),
+          ],
+        ),
       ),
-      body: list.isEmpty
-          ? const Center(child: Text('Nicio captură în perioada aleasă.'))
-          : _StatsBody(catches: list, title: options[_filter]!),
     );
   }
+}
+
+class _Empty extends StatelessWidget {
+  const _Empty();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: Text('Nicio captură în perioada aleasă.'));
+}
+
+String _kg(double v) => '${v.toStringAsFixed(v < 10 ? 2 : 1)} kg';
+String _cm(double v) => '${v.toStringAsFixed(0)} cm';
+
+/// Rândul unei capturi: (cine ·) specie · greutate · lungime.
+String _catchLine(CatchEntry c, {String? who}) => [
+  ?who,
+  c.species,
+  if (c.weightKg != null) _kg(c.weightKg!),
+  if (c.lengthCm != null) _cm(c.lengthCm!),
+  if (c.released) 'eliberat',
+].join(' · ');
+
+class _ParticipantsStats extends StatelessWidget {
+  const _ParticipantsStats({required this.catches, required this.enrolled});
+  final List<CatchEntry> catches;
+  final List<Participant> enrolled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (enrolled.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Niciun participant înscris în perioada aleasă.\n'
+            'Bifează participanții în sezon.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    final text = Theme.of(context).textTheme;
+    final rows = [
+      for (final p in enrolled)
+        (p, catches.where((c) => c.participantId == p.id).toList()),
+    ]..sort((a, b) => _sumKg(b.$2).compareTo(_sumKg(a.$2)));
+    final unassigned = catches.where((c) => c.participantId == null).length;
+
+    String summary(Participant p, List<CatchEntry> list) {
+      if (list.isEmpty) return '${p.category.label} · nicio captură';
+      final maxKg = _max(list, (c) => c.weightKg);
+      final maxCm = _max(list, (c) => c.lengthCm);
+      return [
+        '${list.length} capturi',
+        _kg(_sumKg(list)),
+        if (maxKg != null) 'max ${_kg(maxKg)}',
+        if (maxCm != null) 'max ${_cm(maxCm)}',
+      ].join(' · ');
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Text(
+          '${enrolled.length} participanți înscriși',
+          style: text.titleMedium,
+        ),
+        if (unassigned > 0)
+          Text('$unassigned capturi fără pescar ales', style: text.bodySmall),
+        const SizedBox(height: 8),
+        for (final (i, (p, list)) in rows.indexed)
+          Card(
+            child: ExpansionTile(
+              leading: CircleAvatar(child: Text('${i + 1}')),
+              title: Text(p.fullName),
+              subtitle: Text(summary(p, list)),
+              children: [
+                if (list.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final e in _speciesCount(list).entries)
+                          Chip(
+                            visualDensity: VisualDensity.compact,
+                            label: Text('${e.key} ${e.value}'),
+                          ),
+                      ],
+                    ),
+                  ),
+                for (final c in list)
+                  ListTile(
+                    dense: true,
+                    title: Text(_catchLine(c)),
+                    subtitle: Text(
+                      DateFormat('EEE d MMM, HH:mm').format(c.date),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DailyStats extends StatelessWidget {
+  const _DailyStats({required this.catches});
+  final List<CatchEntry> catches;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.read<AppStore>();
+    final text = Theme.of(context).textTheme;
+    final byDay = <DateTime, List<CatchEntry>>{};
+    for (final c in catches) {
+      byDay
+          .putIfAbsent(
+            DateTime(c.date.year, c.date.month, c.date.day),
+            () => [],
+          )
+          .add(c);
+    }
+    for (final l in byDay.values) {
+      l.sort((a, b) => a.date.compareTo(b.date));
+    }
+    final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        for (final d in days)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat('EEEE, d MMMM yyyy').format(d),
+                    style: text.titleSmall,
+                  ),
+                  Text(
+                    '${byDay[d]!.length} capturi · ${_kg(_sumKg(byDay[d]!))}'
+                    ' · ${_speciesCount(byDay[d]!).entries.map((e) => '${e.key} ${e.value}').join(', ')}',
+                    style: text.bodySmall,
+                  ),
+                  const Divider(),
+                  for (final c in byDay[d]!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 48,
+                            child: Text(
+                              DateFormat('HH:mm').format(c.date),
+                              style: text.bodySmall,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              _catchLine(
+                                c,
+                                who: store
+                                    .participant(c.participantId)
+                                    ?.fullName,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Sortimentul pe specii (crap, caras, somn, știucă…): număr, kg total,
+/// greutate și lungime maximă/medie.
+class _SpeciesTable extends StatelessWidget {
+  const _SpeciesTable({required this.catches});
+  final List<CatchEntry> catches;
+
+  @override
+  Widget build(BuildContext context) {
+    final bySpecies = <String, List<CatchEntry>>{};
+    for (final c in catches) {
+      bySpecies.putIfAbsent(c.species, () => []).add(c);
+    }
+    final rows = bySpecies.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+    String avg(
+      List<CatchEntry> l,
+      double? Function(CatchEntry) f,
+      String Function(double) fmt,
+    ) {
+      final v = l.map(f).whereType<double>().toList();
+      return v.isEmpty ? '—' : fmt(v.reduce((a, b) => a + b) / v.length);
+    }
+
+    String maxOf(
+      List<CatchEntry> l,
+      double? Function(CatchEntry) f,
+      String Function(double) fmt,
+    ) {
+      final m = _max(l, f);
+      return m == null ? '—' : fmt(m);
+    }
+
+    const bold = TextStyle(fontWeight: FontWeight.bold);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Card(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columnSpacing: 18,
+            columns: const [
+              DataColumn(label: Text('Specie')),
+              DataColumn(label: Text('Nr.'), numeric: true),
+              DataColumn(label: Text('Total'), numeric: true),
+              DataColumn(label: Text('Max'), numeric: true),
+              DataColumn(label: Text('Medie'), numeric: true),
+              DataColumn(label: Text('Lung. max'), numeric: true),
+              DataColumn(label: Text('Lung. medie'), numeric: true),
+            ],
+            rows: [
+              for (final e in rows)
+                DataRow(
+                  cells: [
+                    DataCell(Text(e.key)),
+                    DataCell(Text('${e.value.length}')),
+                    DataCell(Text(_kg(_sumKg(e.value)))),
+                    DataCell(Text(maxOf(e.value, (c) => c.weightKg, _kg))),
+                    DataCell(Text(avg(e.value, (c) => c.weightKg, _kg))),
+                    DataCell(Text(maxOf(e.value, (c) => c.lengthCm, _cm))),
+                    DataCell(Text(avg(e.value, (c) => c.lengthCm, _cm))),
+                  ],
+                ),
+              DataRow(
+                cells: [
+                  const DataCell(Text('TOTAL', style: bold)),
+                  DataCell(Text('${catches.length}', style: bold)),
+                  DataCell(Text(_kg(_sumKg(catches)), style: bold)),
+                  const DataCell(Text('')),
+                  const DataCell(Text('')),
+                  const DataCell(Text('')),
+                  const DataCell(Text('')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+double _sumKg(List<CatchEntry> l) =>
+    l.fold<double>(0, (s, c) => s + (c.weightKg ?? 0));
+
+double? _max(List<CatchEntry> l, double? Function(CatchEntry) f) {
+  final v = l.map(f).whereType<double>();
+  return v.isEmpty ? null : v.reduce((a, b) => a > b ? a : b);
+}
+
+Map<String, int> _speciesCount(List<CatchEntry> l) {
+  final m = <String, int>{};
+  for (final c in l) {
+    m[c.species] = (m[c.species] ?? 0) + 1;
+  }
+  return Map.fromEntries(
+    m.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
+  );
 }
 
 class _StatsBody extends StatelessWidget {
@@ -112,10 +437,30 @@ class _StatsBody extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            _Tile(label: 'Capturi', value: '${catches.length}'),
-            _Tile(label: 'Total kg', value: totalKg.toStringAsFixed(1)),
-            _Tile(label: 'Specii', value: '${bySpecies.length}'),
-            _Tile(label: 'Eliberate', value: '$released'),
+            _Tile(
+              label: 'Capturi',
+              value: '${catches.length}',
+              icon: Icons.set_meal,
+              color: Sea.ocean,
+            ),
+            _Tile(
+              label: 'Total kg',
+              value: totalKg.toStringAsFixed(1),
+              icon: Icons.scale,
+              color: Sea.teal,
+            ),
+            _Tile(
+              label: 'Specii',
+              value: '${bySpecies.length}',
+              icon: Icons.category_outlined,
+              color: Sea.sunset,
+            ),
+            _Tile(
+              label: 'Eliberate',
+              value: '$released',
+              icon: Icons.water,
+              color: Sea.coral,
+            ),
           ],
         ),
         if (sortedRecords.isNotEmpty)
@@ -152,19 +497,38 @@ class _StatsBody extends StatelessWidget {
 }
 
 class _Tile extends StatelessWidget {
-  const _Tile({required this.label, required this.value});
+  const _Tile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
   final String label;
   final String value;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+        color: color.withValues(alpha: 0.12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: color.withValues(alpha: 0.35)),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           child: Column(
             children: [
-              Text(value, style: Theme.of(context).textTheme.titleLarge),
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700, color: color),
+              ),
               Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
@@ -225,7 +589,7 @@ class _Ranking extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: e.value / max,
                       minHeight: 14,
-                      color: scheme.primary,
+                      color: speciesColor(e.key),
                       backgroundColor: scheme.surfaceContainerHighest,
                     ),
                   ),

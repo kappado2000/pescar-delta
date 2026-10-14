@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import '../models/expense.dart';
 import '../theme.dart';
+import '../widgets/quick_expense_sheet.dart';
 import 'expenses_screen.dart';
 
 /// Bunurile pentru care se fac des cheltuieli (comune sau personale).
@@ -36,7 +37,7 @@ class ExpensePresetsScreen extends StatelessWidget {
                   Card(
                     child: ListTile(
                       leading: Icon(
-                        p.common ? Icons.groups : Icons.person,
+                        expenseIcon(p.category, p.name),
                         color: p.common ? Sea.ocean : Sea.sunset,
                       ),
                       title: Text(p.name),

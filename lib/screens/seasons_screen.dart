@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import '../models/season.dart';
 import '../services/permit_catalog.dart';
+import 'backup_screen.dart';
 import 'boats_screen.dart';
 import 'participants_screen.dart';
 import 'season_detail_screen.dart';
@@ -52,6 +53,14 @@ class SeasonsScreen extends StatelessWidget {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const BoatsScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Copie de siguranță',
+            icon: const Icon(Icons.cloud_sync_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BackupScreen()),
             ),
           ),
         ],

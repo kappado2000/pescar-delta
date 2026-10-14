@@ -411,6 +411,141 @@ class AppStore extends ChangeNotifier {
     await _save('catches', catches);
   }
 
+  // ---------- Copie de siguranță (export / import) ----------
+  /// Toate datele într-un singur obiect JSON (cu pozele și PDF-urile
+  /// permiselor; fără video-uri, care rămân pe dispozitiv).
+  Future<Map<String, dynamic>> exportData() async {
+    List<Map<String, dynamic>> list(List items) => [
+      for (final e in items) e.toJson() as Map<String, dynamic>,
+    ];
+    return {
+      'app': 'pescar_delta',
+      'version': 1,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'participants': list(participants),
+      'boats': list(boats),
+      'seasons': list(seasons),
+      'catches': [
+        for (final c in catches)
+          {
+            ...c.toJson(),
+            'media': [
+              for (final m in c.media)
+                if (!m.isVideo) m.toJson(),
+            ],
+          },
+      ],
+      'spots': list(spots),
+      'expensePresets': list(expensePresets),
+      'needCategories': list(needCategories),
+      'weatherLog': {
+        for (final e in weatherLog.entries)
+          e.key: e.value.values.map((d) => d.toJson()).toList(),
+      },
+      'permitFiles': [
+        for (final f in permitFiles)
+          {
+            ...f.toJson(),
+            'data': switch (await permitFileBytes(f)) {
+              final b? => base64Encode(b),
+              null => null,
+            },
+          },
+      ],
+    };
+  }
+
+  /// Înlocuiește toate datele cu cele din [data] (un export).
+  Future<void> importData(Map<String, dynamic> data) async {
+    if (data['app'] != 'pescar_delta') {
+      throw const FormatException('Fișierul nu e o copie Pescar Deltă.');
+    }
+    List<Map<String, dynamic>> maps(String key) => [
+      for (final e in (data[key] as List? ?? [])) Map<String, dynamic>.from(e),
+    ];
+    for (final f in permitFiles.toList()) {
+      await deletePermitFile(f);
+    }
+    participants
+      ..clear()
+      ..addAll(maps('participants').map(Participant.fromJson));
+    boats
+      ..clear()
+      ..addAll(maps('boats').map(Boat.fromJson));
+    seasons
+      ..clear()
+      ..addAll(maps('seasons').map(Season.fromJson));
+    catches
+      ..clear()
+      ..addAll(maps('catches').map(CatchEntry.fromJson));
+    spots
+      ..clear()
+      ..addAll(maps('spots').map(Spot.fromJson));
+    expensePresets
+      ..clear()
+      ..addAll(maps('expensePresets').map(ExpensePreset.fromJson));
+    final cats = maps('needCategories').map(NeedCategory.fromJson).toList();
+    needCategories
+      ..clear()
+      ..addAll(cats.isEmpty ? NeedCategory.defaults() : cats);
+    weatherLog.clear();
+    ((data['weatherLog'] as Map?) ?? {}).forEach((place, days) {
+      weatherLog[place as String] = {
+        for (final d in days as List)
+          WeatherDay.fromJson(Map<String, dynamic>.from(d))
+              .key: WeatherDay.fromJson(
+            Map<String, dynamic>.from(d),
+          ),
+      };
+    });
+
+    for (final key in [
+      'participants',
+      'boats',
+      'seasons',
+      'catches',
+      'spots',
+      'expensePresets',
+      'needCategories',
+    ]) {
+      await _save(key, switch (key) {
+        'participants' => participants,
+        'boats' => boats,
+        'seasons' => seasons,
+        'catches' => catches,
+        'spots' => spots,
+        'expensePresets' => expensePresets,
+        _ => needCategories,
+      });
+    }
+    await _box.put(
+      'weatherLog',
+      jsonEncode({
+        for (final e in weatherLog.entries)
+          e.key: e.value.values.map((d) => d.toJson()).toList(),
+      }),
+    );
+    // permisele (PDF) — rescrise în folderul „permise”
+    permitFiles.clear();
+    for (final f in maps('permitFiles')) {
+      final b64 = f['data'] as String?;
+      final meta = PermitFile.fromJson(f);
+      if (b64 == null) continue;
+      final bytes = base64Decode(b64);
+      if (kIsWeb) {
+        await _box.put('file:${meta.id}', b64);
+      } else {
+        final file = File('${await _docsDir()}/${meta.relativePath}');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes);
+      }
+      permitFiles.add(meta);
+    }
+    await _box.put('seeded', true);
+    await _box.put('presetsSeeded', true);
+    await _save('permitFiles', permitFiles);
+  }
+
   // ---------- Folderul „permise” ----------
   List<PermitFile> filesForSeason(String seasonId) =>
       permitFiles.where((f) => f.seasonId == seasonId).toList()

@@ -36,11 +36,11 @@ ThemeData buildTheme(Brightness brightness) {
         secondary: Sea.teal,
         tertiary: Sea.sunset,
         onTertiary: Sea.navy,
-        surface: dark ? const Color(0xFF0A1C2E) : const Color(0xFFF6FAFC),
+        surface: dark ? const Color(0xFF0A1C2E) : const Color(0xFFDDEEF8),
         surfaceContainerLow: dark ? const Color(0xFF0F2438) : Colors.white,
         surfaceContainer: dark
             ? const Color(0xFF122A41)
-            : const Color(0xFFEFF6F9),
+            : const Color(0xFFE8F4FB),
         surfaceContainerHighest: dark
             ? const Color(0xFF1A3550)
             : const Color(0xFFDCEBF1),

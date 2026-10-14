@@ -45,6 +45,7 @@ class Season {
     this.boatDuration = BoatDuration.an,
     Map<String, bool>? purchased,
     this.notes = '',
+    this.permitStart,
   }) : participantIds = participantIds ?? [],
        boatIds = boatIds ?? [],
        purchased = purchased ?? {};
@@ -62,6 +63,10 @@ class Season {
   /// Cheie: `<tip permis>:<id participant sau barcă>` → cumpărat.
   Map<String, bool> purchased;
   String notes;
+
+  /// Ziua de la care încep permisele (ex. ziua plecării) — o scrie userul;
+  /// fără ea permisele nu se completează.
+  DateTime? permitStart;
 
   String get title => '${kind.label} $year';
   String get folderName => '$year-${kind.name}';
@@ -87,6 +92,7 @@ class Season {
     'boatDuration': boatDuration.name,
     'purchased': purchased,
     'notes': notes,
+    'permitStart': permitStart?.toIso8601String(),
   };
 
   factory Season.fromJson(Map<String, dynamic> j) => Season(
@@ -101,5 +107,8 @@ class Season {
     boatDuration: BoatDuration.fromName(j['boatDuration']),
     purchased: Map<String, bool>.from(j['purchased'] ?? {}),
     notes: j['notes'] ?? '',
+    permitStart: j['permitStart'] == null
+        ? null
+        : DateTime.parse(j['permitStart']),
   );
 }

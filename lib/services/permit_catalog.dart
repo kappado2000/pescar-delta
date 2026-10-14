@@ -100,13 +100,9 @@ class PermitTask {
 
 final _ddbraDate = DateFormat('dd-MM-yyyy');
 
-/// Data de început a valabilității: începutul sezonului, dar nu în trecut
-/// (site-ul nu acceptă date trecute).
-String _validFrom(Season s) {
-  final today = DateTime.now();
-  final d = s.start.isBefore(today) ? today : s.start;
-  return _ddbraDate.format(d);
-}
+/// Ziua de început scrisă de user, în formatul site-ului (`dd-MM-yyyy`).
+String _validFrom(Season s) =>
+    s.permitStart == null ? '' : _ddbraDate.format(s.permitStart!);
 
 Map<String, String> _personFields(Participant p) => {
   'fname': p.nume.trim(),
@@ -123,6 +119,7 @@ List<PermitTask> buildPermitTasks({
 }) {
   final tasks = <PermitTask>[];
   final from = _validFrom(season);
+  final noStart = [if (season.permitStart == null) 'ziua de început'];
 
   for (final p in participants.where(
     (p) => season.participantIds.contains(p.id),
@@ -143,7 +140,7 @@ List<PermitTask> buildPermitTasks({
             ? 'Gratuit — ${p.category.label.toLowerCase()}'
             : season.accessDuration.label,
         fields: {..._personFields(p), accessProduct.dateField: from},
-        missing: p.missingFields(),
+        missing: [...noStart, ...p.missingFields()],
         entityId: p.id,
       ),
     );
@@ -158,7 +155,7 @@ List<PermitTask> buildPermitTasks({
           'cnp': p.cnp.trim(),
           _pescuit.dateField: from,
         },
-        missing: p.missingFields(needsCnp: true),
+        missing: [...noStart, ...p.missingFields(needsCnp: true)],
         entityId: p.id,
       ),
     );
@@ -173,6 +170,7 @@ List<PermitTask> buildPermitTasks({
             BoatDuration.an => _barcaAn,
           };
     final missing = <String>[
+      ...noStart,
       if (owner == null)
         'proprietar'
       else

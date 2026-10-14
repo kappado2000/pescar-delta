@@ -65,7 +65,10 @@ class SeasonDetailScreen extends StatelessWidget {
               Tab(icon: Icon(Icons.groups_outlined), text: 'Echipa'),
               Tab(icon: Icon(Icons.badge_outlined), text: 'Permise'),
               Tab(icon: Icon(Icons.checklist), text: 'Necesar'),
-              Tab(icon: Icon(Icons.account_balance_wallet_outlined), text: 'Cheltuieli'),
+              Tab(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                text: 'Cheltuieli',
+              ),
             ],
           ),
         ),
@@ -665,7 +668,11 @@ class _ExpensesCard extends StatelessWidget {
     return Card(
       color: Sea.teal.withValues(alpha: 0.12),
       child: ListTile(
-        leading: const Icon(Icons.account_balance_wallet_outlined, color: Sea.teal, size: 32),
+        leading: const Icon(
+          Icons.account_balance_wallet_outlined,
+          color: Sea.teal,
+          size: 32,
+        ),
         title: const Text('Cheltuieli'),
         subtitle: Text(
           season.expenses.isEmpty

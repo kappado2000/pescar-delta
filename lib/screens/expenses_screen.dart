@@ -104,6 +104,7 @@ class ExpensesScreen extends StatelessWidget {
 
   Future<void> _share(AppStore store, Season season) async {
     String name(String id) => store.participant(id)?.fullName ?? '?';
+    String short(String id) => store.participant(id)?.shortName ?? '?';
     final balances = balancesOf(season.expenses, season.participantIds);
     final total = season.expenses.fold<double>(0, (s, e) => s + e.amount);
     final b = StringBuffer(
@@ -123,7 +124,7 @@ class ExpensesScreen extends StatelessWidget {
       b.writeln(
         '• ${name(x.participantId)}: a plătit ${lei(x.paid)}, '
         'partea lui ${lei(x.owes)} → '
-        '${x.balance >= 0 ? 'primește' : 'dă'} ${lei(x.balance.abs())}',
+        '${x.balance >= 0 ? 'de primit' : 'dator cu suma de'} ${lei(x.balance.abs())}',
       );
     }
     final transfers = settle(balances);
@@ -131,7 +132,7 @@ class ExpensesScreen extends StatelessWidget {
     if (transfers.isEmpty) b.writeln('Nimeni nu datorează nimic.');
     for (final (i, t) in transfers.indexed) {
       b.writeln(
-        '${i + 1}. ${name(t.from)} îi dă lui ${name(t.to)} ${lei(t.amount)}',
+        '${i + 1}. ${short(t.from)} – dator cu suma de ${lei(t.amount)} către ${short(t.to)}',
       );
     }
     await SharePlus.instance.share(ShareParams(text: b.toString()));
@@ -490,11 +491,11 @@ class _CommonList extends StatelessWidget {
                     share: balances[id]?.commonShare ?? 0,
                     owes: [
                       for (final t in transfers.where((t) => t.from == id))
-                        (store.participant(t.to)?.fullName ?? '?', t.amount),
+                        (store.participant(t.to)?.shortName ?? '?', t.amount),
                     ],
                     receives: [
                       for (final t in transfers.where((t) => t.to == id))
-                        (store.participant(t.from)?.fullName ?? '?', t.amount),
+                        (store.participant(t.from)?.shortName ?? '?', t.amount),
                     ],
                   ),
               ],
@@ -620,7 +621,7 @@ class _ShareRow extends StatelessWidget {
           Text('Cota lui: ${lei(share)}', style: text.bodyMedium),
           for (final (to, amount) in owes)
             Text(
-              'Are de achitat lui $to: ${lei(amount)}',
+              'Dator cu suma de ${lei(amount)} către $to',
               style: const TextStyle(
                 color: Sea.coral,
                 fontWeight: FontWeight.w700,
@@ -628,7 +629,7 @@ class _ShareRow extends StatelessWidget {
             ),
           for (final (from, amount) in receives)
             Text(
-              'Primește de la $from: ${lei(amount)}',
+              'De primit suma de ${lei(amount)} de la $from',
               style: const TextStyle(
                 color: Sea.good,
                 fontWeight: FontWeight.w700,
@@ -706,8 +707,8 @@ class _PerParticipant extends StatelessWidget {
                 b.balance.abs() < 0.005
                     ? 'Achitat'
                     : b.balance > 0
-                    ? 'Primește ${lei(b.balance)}'
-                    : 'Are de dat ${lei(-b.balance)}',
+                    ? 'De primit suma de ${lei(b.balance)}'
+                    : 'Dator cu suma de ${lei(-b.balance)}',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: b.balance >= 0 ? Sea.good : Sea.coral,
@@ -870,23 +871,23 @@ class _Settlement extends StatelessWidget {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: store.participant(t.from)?.fullName ?? '?',
+                      text: store.participant(t.from)?.shortName ?? '?',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    const TextSpan(text: '  îi dă lui  '),
+                    const TextSpan(text: ' – dator cu suma de '),
                     TextSpan(
-                      text: store.participant(t.to)?.fullName ?? '?',
+                      text: lei(t.amount),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Sea.coral,
+                      ),
+                    ),
+                    const TextSpan(text: ' către '),
+                    TextSpan(
+                      text: store.participant(t.to)?.shortName ?? '?',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],
-                ),
-              ),
-              trailing: Text(
-                lei(t.amount),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: Sea.deep,
                 ),
               ),
             ),

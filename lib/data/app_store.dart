@@ -37,6 +37,10 @@ class AppStore extends ChangeNotifier {
   final Map<String, Map<String, WeatherDay>> weatherLog = {};
   bool collectingWeather = false;
 
+  /// Ultimul participant care a plătit (implicit la cheltuiala rapidă).
+  String? get lastPayerId => _box.get('lastPayerId') as String?;
+  set lastPayerId(String? id) => _box.put('lastPayerId', id);
+
   Future<void> init() async {
     await Hive.initFlutter();
     _box = await Hive.openBox(

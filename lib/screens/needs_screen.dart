@@ -6,6 +6,7 @@ import '../data/app_store.dart';
 import '../models/need_item.dart';
 import '../models/season.dart';
 import '../theme.dart';
+import '../widgets/need_picker.dart';
 
 /// Pagina „Necesar”: ce trebuie pregătit pentru sezon, pe 7 categorii,
 /// fiecare cu rânduri numerotate.
@@ -26,15 +27,15 @@ class NeedsScreen extends StatelessWidget {
           actions: [
             PopupMenuButton<String>(
               onSelected: (v) {
-                if (v == 'copy') _copyFromPrevious(context, store, season);
+                if (v == 'copy') _pick(context, store, season);
                 if (v == 'share') _share(season);
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(
                   value: 'copy',
                   child: ListTile(
-                    leading: Icon(Icons.content_copy),
-                    title: Text('Preia din sezonul anterior'),
+                    leading: Icon(Icons.history),
+                    title: Text('Alege din alte sezoane'),
                   ),
                 ),
                 PopupMenuItem(
@@ -68,53 +69,18 @@ class NeedsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _copyFromPrevious(
+  Future<void> _pick(
     BuildContext context,
     AppStore store,
     Season season,
   ) async {
-    final previous =
-        store.seasons
-            .where(
-              (s) =>
-                  s.id != season.id &&
-                  s.start.isBefore(season.start) &&
-                  s.needs.values.any((l) => l.isNotEmpty),
-            )
-            .toList()
-          ..sort((a, b) => b.start.compareTo(a.start));
     final messenger = ScaffoldMessenger.of(context);
-    if (previous.isEmpty) {
+    final added = await pickNeedsFromOtherSeasons(context, store, season);
+    if (added > 0) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Niciun sezon anterior cu listă de necesar.'),
-        ),
+        SnackBar(content: Text('Am adăugat $added rânduri.')),
       );
-      return;
     }
-    final from = previous.first;
-    var added = 0;
-    for (final c in NeedCategory.values) {
-      // problemele remediate nu se mai preiau
-      final source = from
-          .needsOf(c)
-          .where(
-            (i) =>
-                i.text.trim().isNotEmpty &&
-                !(c == NeedCategory.probleme && i.done),
-          );
-      final target = season.needsOf(c);
-      final existing = target.map((i) => i.text.trim().toLowerCase()).toSet();
-      for (final i in source) {
-        if (existing.contains(i.text.trim().toLowerCase())) continue;
-        target.add(NeedItem(id: newId(), text: i.text));
-        added++;
-      }
-    }
-    await store.upsertSeason(season);
-    messenger.showSnackBar(
-      SnackBar(content: Text('Am preluat $added rânduri din ${from.title}.')),
-    );
   }
 
   Future<void> _share(Season season) async {
@@ -380,17 +346,74 @@ class _NeedListState extends State<_NeedList>
                   ),
                 ),
                 Expanded(
-                  child: TextField(
-                    controller: _newItem,
+                  child: RawAutocomplete<String>(
+                    textEditingController: _newItem,
                     focusNode: _newFocus,
-                    textCapitalization: TextCapitalization.sentences,
-                    textInputAction: TextInputAction.next,
-                    onSubmitted: (_) => _add(),
-                    decoration: InputDecoration(
-                      hintText:
-                          'Scrie aici (${widget.category.label.toLowerCase()})…',
+                    optionsBuilder: (v) {
+                      final q = v.text.trim().toLowerCase();
+                      if (q.isEmpty) return const [];
+                      return needSuggestions(
+                            context.read<AppStore>(),
+                            widget.season,
+                            widget.category,
+                          )
+                          .map((s) => s.text)
+                          .where((t) => t.toLowerCase().contains(q));
+                    },
+                    onSelected: (_) => _add(),
+                    optionsViewOpenDirection: OptionsViewOpenDirection.up,
+                    optionsViewBuilder: (context, onSelected, options) => Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(12),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxHeight: 220,
+                            maxWidth: 320,
+                          ),
+                          child: ListView(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            children: [
+                              for (final o in options)
+                                ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.history, size: 18),
+                                  title: Text(o),
+                                  onTap: () => onSelected(o),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
+                    fieldViewBuilder: (context, controller, focus, onSubmit) =>
+                        TextField(
+                          controller: controller,
+                          focusNode: focus,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => _add(),
+                          decoration: InputDecoration(
+                            hintText:
+                                'Scrie aici (${widget.category.label.toLowerCase()})…',
+                          ),
+                        ),
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Alege din alte sezoane',
+                  icon: const Icon(Icons.history),
+                  onPressed: () async {
+                    final added = await pickNeedsFromOtherSeasons(
+                      context,
+                      context.read<AppStore>(),
+                      widget.season,
+                      only: widget.category,
+                    );
+                    if (added > 0) setState(() {});
+                  },
                 ),
                 IconButton.filled(onPressed: _add, icon: const Icon(Icons.add)),
               ],

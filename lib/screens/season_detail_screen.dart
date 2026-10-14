@@ -12,6 +12,8 @@ import '../models/season.dart';
 import '../services/permit_catalog.dart';
 import '../models/need_item.dart';
 import '../theme.dart';
+import '../models/expense.dart';
+import 'expenses_screen.dart';
 import 'needs_screen.dart';
 import 'permit_buy_screen.dart';
 import 'seasons_screen.dart';
@@ -70,6 +72,7 @@ class SeasonDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _NeedsCard(season: season),
+          _ExpensesCard(season: season),
           const SizedBox(height: 16),
 
           // ---------- Participanți ----------
@@ -273,6 +276,38 @@ class _NeedsCard extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => NeedsScreen(seasonId: season.id)),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpensesCard extends StatelessWidget {
+  const _ExpensesCard({required this.season});
+  final Season season;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = season.expenses.fold<double>(0, (s, e) => s + e.amount);
+    final transfers = settle(balancesOf(season.expenses, season.participantIds))
+        .length;
+    return Card(
+      color: Sea.teal.withValues(alpha: 0.12),
+      child: ListTile(
+        leading: const Icon(Icons.payments_outlined, color: Sea.teal, size: 32),
+        title: const Text('Cheltuieli'),
+        subtitle: Text(
+          season.expenses.isEmpty
+              ? 'Comune (împărțite egal) sau personale, pe participant'
+              : 'Total ${lei(total)} · '
+                    '${transfers == 0 ? 'toți achitați' : '$transfers transferuri de decontat'}',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ExpensesScreen(seasonId: season.id),
+          ),
         ),
       ),
     );

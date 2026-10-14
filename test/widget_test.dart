@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pescar_delta/models/boat.dart';
+import 'package:pescar_delta/models/expense.dart';
 import 'package:pescar_delta/models/need_item.dart';
 import 'package:pescar_delta/models/participant.dart';
 import 'package:pescar_delta/models/season.dart';
@@ -83,6 +84,49 @@ void main() {
     expect(back.needsOf(NeedCategory.momeli).single.text, 'Porumb');
     expect(back.needsOf(NeedCategory.probleme).single.done, isTrue);
     expect(back.needsOf(NeedCategory.tinuta), isEmpty);
+  });
+
+  test('cheltuieli: comune împărțite egal, personale, decontare', () {
+    final now = DateTime(2026, 5, 1);
+    final expenses = [
+      // A plătește 300 lei mâncare comună pentru A, B, C → 100 fiecare
+      Expense(
+        id: '1',
+        description: 'Mâncare',
+        amount: 300,
+        paidBy: 'A',
+        common: true,
+        sharedWith: ['A', 'B', 'C'],
+        date: now,
+      ),
+      // B plătește 60 lei momeli comune pentru toți → 20 fiecare
+      Expense(
+        id: '2',
+        description: 'Momeli',
+        amount: 60,
+        paidBy: 'B',
+        common: true,
+        sharedWith: ['A', 'B', 'C'],
+        date: now,
+      ),
+      // A plătește 50 lei o lanseta personală a lui C
+      Expense(
+        id: '3',
+        description: 'Lansetă',
+        amount: 50,
+        paidBy: 'A',
+        common: false,
+        sharedWith: ['C'],
+        date: now,
+      ),
+    ];
+    final b = balancesOf(expenses, ['A', 'B', 'C']);
+    expect(b['A']!.balance, closeTo(350 - 120, 0.001)); // primește 230
+    expect(b['B']!.balance, closeTo(60 - 120, 0.001)); // dă 60
+    expect(b['C']!.balance, closeTo(0 - 170, 0.001)); // dă 170
+    final t = settle(b);
+    expect(t.fold<double>(0, (s, x) => s + x.amount), closeTo(230, 0.001));
+    expect(t.every((x) => x.to == 'A'), isTrue);
   });
 
   test('sezoanele din anii trecuți sunt arhivate', () {

@@ -7,16 +7,56 @@ import '../models/season.dart';
 import '../screens/expenses_screen.dart';
 import '../theme.dart';
 
-IconData expenseIcon(String category) => switch (category) {
-  'Combustibil' => Icons.local_gas_station,
-  'Mâncare-Băutură' => Icons.restaurant,
-  'Momeli' => Icons.phishing,
-  'Cazare' => Icons.hotel,
-  'Transport' => Icons.directions_car,
-  'Permise' => Icons.badge,
-  'Echipament' => Icons.construction,
-  _ => Icons.receipt_long,
-};
+String _fold(String s) => s
+    .toLowerCase()
+    .replaceAll('ă', 'a')
+    .replaceAll('â', 'a')
+    .replaceAll('î', 'i')
+    .replaceAll('ș', 's')
+    .replaceAll('ş', 's')
+    .replaceAll('ț', 't')
+    .replaceAll('ţ', 't');
+
+/// Iconița unui bun: întâi după cuvintele din nume (gheață, băutură…),
+/// apoi după categorie.
+IconData expenseIcon(String category, [String name = '']) {
+  final n = _fold(name);
+  bool has(List<String> words) => words.any(n.contains);
+  if (has(['gheata', 'ghiata'])) return Icons.ac_unit;
+  if (has(['bere'])) return Icons.sports_bar;
+  if (has(['vin'])) return Icons.wine_bar;
+  if (has(['cafea'])) return Icons.local_cafe;
+  if (has(['apa', 'bautur', 'suc', 'racoritoare'])) return Icons.local_drink;
+  if (has(['paine', 'mancare', 'alimente', 'carne', 'gratar'])) {
+    return Icons.restaurant;
+  }
+  if (has(['benzina', 'combustibil', 'carburant'])) {
+    return Icons.local_gas_station;
+  }
+  if (has(['motorina', 'masina', 'autostrada', 'rovinieta', 'parcare'])) {
+    return Icons.directions_car;
+  }
+  if (has(['ulei'])) return Icons.oil_barrel;
+  if (has(['momeal', 'nada', 'rame', 'viermi', 'porumb', 'boilies'])) {
+    return Icons.phishing;
+  }
+  if (has(['carlig', 'fir', 'plumb', 'naluc', 'lanset', 'mulineta'])) {
+    return Icons.construction;
+  }
+  if (has(['cazare', 'pensiune', 'cort', 'camera'])) return Icons.hotel;
+  if (has(['permis'])) return Icons.badge;
+  if (has(['barca', 'ambarcat', 'motor'])) return Icons.directions_boat;
+  return switch (category) {
+    'Combustibil' => Icons.local_gas_station,
+    'Mâncare-Băutură' => Icons.restaurant,
+    'Momeli' => Icons.phishing,
+    'Cazare' => Icons.hotel,
+    'Transport' => Icons.directions_car,
+    'Permise' => Icons.badge,
+    'Echipament' => Icons.construction,
+    _ => Icons.receipt_long,
+  };
+}
 
 /// Cheltuială rapidă, pentru barcă: presetare → sumă → salvează.
 /// Data și ora se pun automat; plătitorul implicit e ultimul folosit.
@@ -168,7 +208,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
               children: [
                 for (final p in presets)
                   _BigTile(
-                    icon: expenseIcon(p.category),
+                    icon: expenseIcon(p.category, p.name),
                     label: p.name,
                     sub: p.amount == null ? null : lei(p.amount!),
                     color: p.common ? Sea.ocean : Sea.sunset,
@@ -211,7 +251,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => setState(() => _preset = null),
               ),
-              Icon(expenseIcon(p.category), color: color, size: 28),
+              Icon(expenseIcon(p.category, p.name), color: color, size: 28),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

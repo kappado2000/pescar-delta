@@ -220,6 +220,13 @@ class AppStore extends ChangeNotifier {
     await _save('expensePresets', expensePresets);
   }
 
+  /// Mută presetarea de pe poziția [from] pe poziția [to].
+  Future<void> movePreset(int from, int to) async {
+    if (from == to) return;
+    expensePresets.insert(to, expensePresets.removeAt(from));
+    await _save('expensePresets', expensePresets);
+  }
+
   // ---------- Participanți ----------
   Participant? participant(String? id) =>
       participants.where((p) => p.id == id).firstOrNull;

@@ -19,6 +19,7 @@ class ExpensePreset {
     this.category = 'Altele',
     this.common = true,
     this.amount,
+    this.icon,
   });
 
   final String id;
@@ -29,12 +30,16 @@ class ExpensePreset {
   /// Suma obișnuită (opțional).
   double? amount;
 
+  /// Iconița aleasă de user (cheie din lista de iconițe); null = automată.
+  String? icon;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'category': category,
     'common': common,
     'amount': amount,
+    'icon': icon,
   };
 
   factory ExpensePreset.fromJson(Map<String, dynamic> j) => ExpensePreset(
@@ -43,6 +48,7 @@ class ExpensePreset {
     category: j['category'] ?? 'Altele',
     common: j['common'] ?? true,
     amount: (j['amount'] as num?)?.toDouble(),
+    icon: j['icon'],
   );
 }
 

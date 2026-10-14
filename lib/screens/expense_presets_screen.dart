@@ -36,7 +36,7 @@ class ExpensePresetsScreen extends StatelessWidget {
                   Card(
                     child: ListTile(
                       leading: Icon(
-                        expenseIcon(p.category, p.name),
+                        presetIcon(p),
                         color: p.common ? Sea.ocean : Sea.sunset,
                       ),
                       title: Text(p.name),
@@ -58,42 +58,70 @@ Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
   final store = context.read<AppStore>();
   final name = TextEditingController(text: preset?.name ?? '');
   var category = preset?.category ?? 'Altele';
+  String? icon = preset?.icon;
   var common = preset?.common ?? true;
   await showDialog(
     context: context,
     builder: (c) => StatefulBuilder(
       builder: (c, setState) => AlertDialog(
-        title: Text(preset == null ? 'Presetare nouă' : 'Editare presetare'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              autofocus: preset == null,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Bun (ex. Benzină barcă)',
+        title: Text(preset == null ? 'Card nou' : 'Modifică cardul'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                autofocus: preset == null,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Bun (ex. Benzină barcă)',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: expenseCategories.contains(category)
-                  ? category
-                  : 'Altele',
-              decoration: const InputDecoration(labelText: 'Categorie'),
-              items: [
-                for (final cat in expenseCategories)
-                  DropdownMenuItem(value: cat, child: Text(cat)),
-              ],
-              onChanged: (v) => setState(() => category = v!),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: common,
-              onChanged: (v) => setState(() => common = v),
-              title: Text(common ? 'Comună (se împarte egal)' : 'Personală'),
-            ),
-          ],
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: expenseCategories.contains(category)
+                    ? category
+                    : 'Altele',
+                decoration: const InputDecoration(labelText: 'Categorie'),
+                items: [
+                  for (final cat in expenseCategories)
+                    DropdownMenuItem(value: cat, child: Text(cat)),
+                ],
+                onChanged: (v) => setState(() => category = v!),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Iconiță', style: Theme.of(c).textTheme.titleSmall),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Automată'),
+                    selected: icon == null,
+                    onSelected: (_) => setState(() => icon = null),
+                  ),
+                  for (final e in expenseIconChoices.entries)
+                    ChoiceChip(
+                      showCheckmark: false,
+                      padding: const EdgeInsets.all(4),
+                      label: Icon(e.value, size: 22),
+                      selected: icon == e.key,
+                      onSelected: (_) => setState(() => icon = e.key),
+                    ),
+                ],
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: common,
+                onChanged: (v) => setState(() => common = v),
+                title: Text(common ? 'Comună (se împarte egal)' : 'Personală'),
+              ),
+            ],
+          ),
         ),
         actions: [
           if (preset != null)
@@ -116,7 +144,8 @@ Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
                 ..name = name.text.trim()
                 ..category = category
                 ..common = common
-                ..amount = null;
+                ..amount = null
+                ..icon = icon;
               await store.upsertPreset(p);
               if (c.mounted) Navigator.pop(c);
             },

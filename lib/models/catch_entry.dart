@@ -52,6 +52,33 @@ class WeatherSnapshot {
   );
 }
 
+/// O poză sau un video al capturii.
+///
+/// Pozele se țin comprimate în baza de date ([base64]); video-urile sunt
+/// fișiere în directorul aplicației ([path], relativ: `media/<captură>/x.mp4`).
+class CatchMedia {
+  CatchMedia({required this.id, required this.isVideo, this.base64, this.path});
+
+  final String id;
+  final bool isVideo;
+  final String? base64;
+  final String? path;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'isVideo': isVideo,
+    'base64': base64,
+    'path': path,
+  };
+
+  factory CatchMedia.fromJson(Map<String, dynamic> j) => CatchMedia(
+    id: j['id'],
+    isVideo: j['isVideo'] ?? false,
+    base64: j['base64'],
+    path: j['path'],
+  );
+}
+
 class CatchEntry {
   CatchEntry({
     required this.id,
@@ -64,12 +91,12 @@ class CatchEntry {
     this.spotId,
     this.lat,
     this.lng,
-    this.photoBase64,
+    List<CatchMedia>? media,
     this.released = false,
     this.notes = '',
     this.participantId,
     this.weather,
-  });
+  }) : media = media ?? [];
 
   final String id;
   DateTime date;
@@ -81,7 +108,15 @@ class CatchEntry {
   String? spotId;
   double? lat;
   double? lng;
-  String? photoBase64;
+
+  /// Pozele și video-urile capturii, în ordinea adăugării.
+  List<CatchMedia> media;
+
+  /// Prima poză (pentru miniatură).
+  String? get photoBase64 =>
+      media.where((m) => !m.isVideo && m.base64 != null).firstOrNull?.base64;
+
+  int get videoCount => media.where((m) => m.isVideo).length;
   bool released;
   String notes;
   String? participantId;
@@ -100,7 +135,7 @@ class CatchEntry {
     'spotId': spotId,
     'lat': lat,
     'lng': lng,
-    'photoBase64': photoBase64,
+    'media': media.map((m) => m.toJson()).toList(),
     'released': released,
     'notes': notes,
     'participantId': participantId,
@@ -118,7 +153,13 @@ class CatchEntry {
     spotId: j['spotId'],
     lat: (j['lat'] as num?)?.toDouble(),
     lng: (j['lng'] as num?)?.toDouble(),
-    photoBase64: j['photoBase64'],
+    media: [
+      for (final m in (j['media'] as List? ?? []))
+        CatchMedia.fromJson(Map<String, dynamic>.from(m)),
+      // compatibilitate: poza unică din versiunea anterioară
+      if (j['media'] == null && j['photoBase64'] != null)
+        CatchMedia(id: 'p0', isVideo: false, base64: j['photoBase64']),
+    ],
     released: j['released'] ?? false,
     notes: j['notes'] ?? '',
     participantId: j['participantId'],

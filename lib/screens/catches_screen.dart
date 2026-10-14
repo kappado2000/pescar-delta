@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -10,6 +9,7 @@ import '../models/catch_entry.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/catch_media_editor.dart';
 import '../widgets/delta_scene.dart';
 
 final _dateTime = DateFormat('d MMM yyyy, HH:mm');
@@ -115,12 +115,18 @@ class _CatchCard extends StatelessWidget {
             SizedBox(
               width: 92,
               height: 92,
-              child: c.photoBase64 != null
-                  ? Image.memory(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (c.photoBase64 != null)
+                    Image.memory(
                       base64Decode(c.photoBase64!),
                       fit: BoxFit.cover,
                     )
-                  : Container(
+                  else if (c.media.isNotEmpty)
+                    MediaThumb(media: c.media.first)
+                  else
+                    Container(
                       color: speciesColor(c.species).withValues(alpha: 0.15),
                       child: Icon(
                         Icons.set_meal,
@@ -128,6 +134,41 @@ class _CatchCard extends StatelessWidget {
                         color: speciesColor(c.species),
                       ),
                     ),
+                  if (c.media.length > 1 || c.videoCount > 0)
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              c.videoCount > 0 ? Icons.videocam : Icons.photo,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${c.media.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             Container(width: 4, height: 92, color: speciesColor(c.species)),
             Expanded(
@@ -234,7 +275,7 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
   late String? _participantId = _c.participantId;
   late double? _lat = _c.lat;
   late double? _lng = _c.lng;
-  late String? _photo = _c.photoBase64;
+  late final List<CatchMedia> _media = List.of(_c.media);
   late bool _released = _c.released;
   bool _locating = false;
   bool _saving = false;
@@ -257,17 +298,6 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
         _lng = pos.longitude;
       }
     });
-  }
-
-  Future<void> _pickPhoto(ImageSource source) async {
-    final x = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 1280,
-      imageQuality: 70,
-    );
-    if (x == null) return;
-    final bytes = await x.readAsBytes();
-    setState(() => _photo = base64Encode(bytes));
   }
 
   @override
@@ -295,43 +325,8 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ---------- Poză ----------
-          AspectRatio(
-            aspectRatio: 16 / 10,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _photo != null
-                  ? Image.memory(base64Decode(_photo!), fit: BoxFit.cover)
-                  : Container(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest,
-                      child: const Center(
-                        child: Icon(Icons.photo_camera, size: 48),
-                      ),
-                    ),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.photo_camera),
-                label: const Text('Cameră'),
-                onPressed: () => _pickPhoto(ImageSource.camera),
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Galerie'),
-                onPressed: () => _pickPhoto(ImageSource.gallery),
-              ),
-              if (_photo != null)
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => setState(() => _photo = null),
-                ),
-            ],
-          ),
+          // ---------- Poze și video ----------
+          CatchMediaEditor(catchId: _c.id, media: _media),
           const SizedBox(height: 8),
 
           // ---------- Specie ----------
@@ -534,7 +529,7 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
       ..participantId = _participantId
       ..lat = _lat
       ..lng = _lng
-      ..photoBase64 = _photo
+      ..media = _media
       ..released = _released
       ..notes = _notes.text.trim();
     await store.upsertCatch(_c);

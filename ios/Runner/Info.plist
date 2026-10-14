@@ -4,8 +4,10 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Locația se salvează la capturi și locurile de pescuit și se folosește pentru prognoza meteo.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pentru sunetul video-urilor cu capturile.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Pentru pozele capturilor.</string>
+	<string>Pentru pozele și video-urile capturilor.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pentru a atașa poze din galerie la capturi.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

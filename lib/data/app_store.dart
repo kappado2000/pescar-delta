@@ -13,6 +13,8 @@ import '../models/participant.dart';
 import '../models/permit_file.dart';
 import '../models/season.dart';
 import '../models/spot.dart';
+import '../models/weather_day.dart';
+import '../services/weather_collector.dart';
 
 const _uuid = Uuid();
 String newId() => _uuid.v4();
@@ -29,6 +31,10 @@ class AppStore extends ChangeNotifier {
   final List<Spot> spots = [];
   final List<PermitFile> permitFiles = [];
 
+  /// Vremea zilnică colectată: locație (`Place.key`) → zi (`yyyy-MM-dd`).
+  final Map<String, Map<String, WeatherDay>> weatherLog = {};
+  bool collectingWeather = false;
+
   Future<void> init() async {
     await Hive.initFlutter();
     _box = await Hive.openBox(
@@ -41,7 +47,23 @@ class AppStore extends ChangeNotifier {
     _load('catches', catches, CatchEntry.fromJson);
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);
+    final rawLog = _box.get('weatherLog') as String?;
+    if (rawLog != null) {
+      final decoded = jsonDecode(rawLog);
+      if (decoded is Map) {
+        decoded.forEach((place, days) {
+          weatherLog[place] = {
+            for (final e in days as List)
+              WeatherDay.fromJson(Map<String, dynamic>.from(e))
+                  .key: WeatherDay.fromJson(
+                Map<String, dynamic>.from(e),
+              ),
+          };
+        });
+      }
+    }
     await _seedOnce();
+    collectWeather(); // în fundal; fără semnal pur și simplu nu adaugă nimic
   }
 
   Future<List<int>> _encryptionKey() async {
@@ -156,6 +178,7 @@ class AppStore extends ChangeNotifier {
     final i = seasons.indexWhere((e) => e.id == s.id);
     i >= 0 ? seasons[i] = s : seasons.add(s);
     await _save('seasons', seasons);
+    collectWeather();
   }
 
   Future<void> deleteSeason(String id) async {
@@ -169,6 +192,78 @@ class AppStore extends ChangeNotifier {
   Future<void> setPurchased(Season s, String taskKey, bool value) async {
     s.purchased[taskKey] = value;
     await _save('seasons', seasons);
+  }
+
+  // ---------- Vremea pe locația sezonului ----------
+  /// Sezonul „de acum”: cel în desfășurare, altfel următorul, altfel ultimul.
+  Season? get currentSeason {
+    final now = DateTime.now();
+    final inProgress = seasons.where((s) => s.contains(now)).firstOrNull;
+    if (inProgress != null) return inProgress;
+    final upcoming = seasons.where((s) => s.start.isAfter(now)).toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+    if (upcoming.isNotEmpty) return upcoming.first;
+    final past = seasons.toList()..sort((a, b) => b.end.compareTo(a.end));
+    return past.firstOrNull;
+  }
+
+  /// Vremea din ziua [d], în locația sezonului din care face parte ziua.
+  WeatherDay? weatherOn(DateTime d) {
+    final s = seasonForDate(d);
+    return s == null ? null : weatherLog[s.place.key]?[WeatherDay.keyFor(d)];
+  }
+
+  /// Zilele colectate pentru un sezon (cele mai noi primele).
+  List<WeatherDay> weatherForSeason(Season s) =>
+      (weatherLog[s.place.key]?.values ?? const <WeatherDay>[])
+          .where((d) => s.contains(d.date))
+          .toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+  /// Completează golurile din jurnalul meteo pentru fiecare sezon: în
+  /// locația lui, de la începutul sezonului până ieri (sau sfârșitul lui).
+  /// Întoarce câte zile s-au adăugat.
+  Future<int> collectWeather() async {
+    if (collectingWeather) return 0;
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    collectingWeather = true;
+    notifyListeners();
+    var added = 0;
+    try {
+      for (final s in seasons.toList()) {
+        final end = s.end.isBefore(yesterday) ? s.end : yesterday;
+        final log = weatherLog.putIfAbsent(s.place.key, () => {});
+        var first = DateTime(s.start.year, s.start.month, s.start.day);
+        while (!first.isAfter(end) &&
+            log.containsKey(WeatherDay.keyFor(first))) {
+          first = DateTime(first.year, first.month, first.day + 1);
+        }
+        if (first.isAfter(end)) continue;
+        try {
+          final days = await WeatherCollector.fetchRange(s.place, first, end);
+          for (final d in days) {
+            if (!log.containsKey(d.key)) added++;
+            log[d.key] = d;
+          }
+        } catch (_) {
+          // fără semnal / eroare API: încercăm data viitoare
+        }
+      }
+      if (added > 0) {
+        await _box.put(
+          'weatherLog',
+          jsonEncode({
+            for (final e in weatherLog.entries)
+              e.key: e.value.values.map((d) => d.toJson()).toList(),
+          }),
+        );
+      }
+      return added;
+    } finally {
+      collectingWeather = false;
+      notifyListeners();
+    }
   }
 
   // ---------- Capturi ----------

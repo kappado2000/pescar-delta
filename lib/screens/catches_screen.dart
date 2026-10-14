@@ -517,8 +517,11 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
         : _species;
     // Vremea se salvează doar pentru capturile proaspete (din ultimele 3 ore).
     final fresh = DateTime.now().difference(_date).inHours < 3;
-    if (_c.weather == null && fresh && _lat != null) {
-      _c.weather = await WeatherService.snapshot(_lat!, _lng!);
+    // fără GPS → vremea din locația sezonului
+    final place = store.seasonForDate(_date)?.place;
+    final wLat = _lat ?? place?.lat, wLng = _lng ?? place?.lng;
+    if (_c.weather == null && fresh && wLat != null && wLng != null) {
+      _c.weather = await WeatherService.snapshot(wLat, wLng);
     }
     _c
       ..species = species

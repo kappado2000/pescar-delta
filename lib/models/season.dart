@@ -1,3 +1,5 @@
+import 'place.dart';
+
 enum SeasonKind {
   primavara('Primăvară'),
   toamna('Toamnă');
@@ -46,6 +48,7 @@ class Season {
     Map<String, bool>? purchased,
     this.notes = '',
     this.permitStart,
+    this.place = sfantuGheorghe,
   }) : participantIds = participantIds ?? [],
        boatIds = boatIds ?? [],
        purchased = purchased ?? {};
@@ -67,6 +70,9 @@ class Season {
   /// Ziua de la care încep permisele (ex. ziua plecării) — o scrie userul;
   /// fără ea permisele nu se completează.
   DateTime? permitStart;
+
+  /// Locația sezonului (ex. Sfântu Gheorghe, Crișan) — pentru vreme.
+  Place place;
 
   String get title => '${kind.label} $year';
   String get folderName => '$year-${kind.name}';
@@ -93,6 +99,7 @@ class Season {
     'purchased': purchased,
     'notes': notes,
     'permitStart': permitStart?.toIso8601String(),
+    'place': {'name': place.name, 'lat': place.lat, 'lng': place.lng},
   };
 
   factory Season.fromJson(Map<String, dynamic> j) => Season(
@@ -110,5 +117,12 @@ class Season {
     permitStart: j['permitStart'] == null
         ? null
         : DateTime.parse(j['permitStart']),
+    place: j['place'] == null
+        ? sfantuGheorghe
+        : Place(
+            j['place']['name'],
+            (j['place']['lat'] as num).toDouble(),
+            (j['place']['lng'] as num).toDouble(),
+          ),
   );
 }

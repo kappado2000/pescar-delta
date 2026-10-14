@@ -9,7 +9,9 @@ import 'boats_screen.dart';
 import 'participants_screen.dart';
 import 'season_detail_screen.dart';
 import '../theme.dart';
+import '../models/place.dart';
 import '../widgets/delta_scene.dart';
+import '../widgets/place_picker.dart';
 
 final _dayMonth = DateFormat('d MMM');
 
@@ -242,6 +244,7 @@ class _SeasonCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
+                '📍 ${season.place.name} · '
                 '${_dayMonth.format(season.start)} – ${_dayMonth.format(season.end)}'
                 ' · ${season.participantIds.length} participanți'
                 ' · $catches capturi',
@@ -314,6 +317,13 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
       : (DateTime(y, 6, 10), DateTime(y, 11, 30));
   var start = season?.start ?? defaults(kind, year).$1;
   var end = season?.end ?? defaults(kind, year).$2;
+  // locația: a sezonului editat, altfel a celui mai recent sezon
+  var place =
+      season?.place ??
+      ((store.seasons.toList()..sort((a, b) => b.start.compareTo(a.start)))
+              .firstOrNull
+              ?.place ??
+          sfantuGheorghe);
 
   await showDialog(
     context: context,
@@ -383,6 +393,17 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                 subtitle: Text(DateFormat('d MMMM yyyy').format(end)),
                 onTap: () => pick(false),
               ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.place),
+                title: const Text('Locație'),
+                subtitle: Text(place.name),
+                trailing: const Icon(Icons.edit_location_alt_outlined),
+                onTap: () async {
+                  final p = await pickPlace(ctx, current: place);
+                  if (p != null) setState(() => place = p);
+                },
+              ),
             ],
           ),
           actions: [
@@ -415,7 +436,8 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                   ..year = year
                   ..kind = kind
                   ..start = start
-                  ..end = end;
+                  ..end = end
+                  ..place = place;
                 await store.upsertSeason(s);
                 if (ctx.mounted) Navigator.pop(ctx);
               },

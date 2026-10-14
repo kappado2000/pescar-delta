@@ -4,6 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import '../models/place.dart';
+import '../models/season.dart';
+import '../models/weather_day.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
@@ -20,10 +23,10 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  /// `tulcea`, `gps` sau id-ul unui loc salvat.
-  late String _source = widget.spotId ?? 'tulcea';
+  /// `season` (locația sezonului curent), `gps`, `place:<key>` sau id de loc.
+  late String _source = widget.spotId ?? 'season';
   Future<Forecast>? _future;
-  String _placeName = 'Tulcea';
+  String _placeName = '';
 
   @override
   void initState() {
@@ -31,88 +34,119 @@ class _WeatherScreenState extends State<WeatherScreen> {
     _load();
   }
 
+  Place _seasonPlace(AppStore store) =>
+      store.currentSeason?.place ?? sfantuGheorghe;
+
   Future<void> _load() async {
     final store = context.read<AppStore>();
-    double lat = defaultLat, lng = defaultLng;
-    String name = 'Tulcea';
+    var place = _seasonPlace(store);
+    var name = place.name;
     if (_source == 'gps') {
       final pos = await LocationService.current();
       if (pos != null) {
-        lat = pos.latitude;
-        lng = pos.longitude;
+        place = Place('Poziția mea', pos.latitude, pos.longitude);
         name = 'Poziția mea';
       } else {
-        name = 'Tulcea (GPS indisponibil)';
+        name = '${place.name} (GPS indisponibil)';
       }
+    } else if (_source.startsWith('place:')) {
+      place = deltaPlaces.firstWhere(
+        (p) => p.key == _source.substring(6),
+        orElse: () => place,
+      );
+      name = place.name;
     } else if (store.spot(_source) case final s?) {
-      lat = s.lat;
-      lng = s.lng;
+      place = Place(s.name, s.lat, s.lng);
       name = s.name;
     }
     if (!mounted) return;
     setState(() {
       _placeName = name;
-      _future = WeatherService.fetch(lat, lng);
+      _future = WeatherService.fetch(place.lat, place.lng);
     });
+    store.collectWeather();
   }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
+    final seasonPlace = _seasonPlace(store);
     final sources = {
-      'tulcea': 'Tulcea',
+      'season': '${seasonPlace.name} (sezonul curent)',
       'gps': 'Poziția mea',
-      for (final s in store.spots) s.id: s.name,
+      for (final p in deltaPlaces)
+        if (p.key != seasonPlace.key) 'place:${p.key}': p.name,
+      for (final s in store.spots) s.id: '📍 ${s.name}',
     };
-    if (!sources.containsKey(_source)) _source = 'tulcea';
-    return Scaffold(
-      appBar: SceneAppBar(
-        title: 'Vreme și presiune',
-        subtitle: _placeName,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.place_outlined),
-            initialValue: _source,
-            onSelected: (v) {
-              _source = v;
-              _load();
-            },
-            itemBuilder: (_) => [
-              for (final e in sources.entries)
-                PopupMenuItem(value: e.key, child: Text(e.value)),
+    if (!sources.containsKey(_source)) _source = 'season';
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: SceneAppBar(
+          title: 'Vremea',
+          subtitle: _placeName,
+          height: 112,
+          actions: [
+            PopupMenuButton<String>(
+              tooltip: 'Alege locația',
+              icon: const Icon(Icons.place_outlined),
+              initialValue: _source,
+              onSelected: (v) {
+                _source = v;
+                _load();
+              },
+              itemBuilder: (_) => [
+                for (final e in sources.entries)
+                  PopupMenuItem(value: e.key, child: Text(e.value)),
+              ],
+            ),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Prognoză 7 zile'),
+              Tab(text: 'Istoric sezon'),
             ],
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: FutureBuilder<Forecast>(
-          future: _future,
-          builder: (context, snap) {
-            if (snap.hasError) {
-              return ListView(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      'Nu am putut încărca prognoza.\n${snap.error}\n\n'
-                      'Trage în jos pentru a reîncerca.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              );
-            }
-            if (!snap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return _ForecastView(forecast: snap.data!, place: _placeName);
-          },
+        ),
+        body: TabBarView(
+          children: [
+            RefreshIndicator(
+              onRefresh: _load,
+              child: FutureBuilder<Forecast>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            'Nu am putut încărca prognoza.\n${snap.error}\n\n'
+                            'Trage în jos pentru a reîncerca.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return _ForecastView(forecast: snap.data!, place: _placeName);
+                },
+              ),
+            ),
+            const _HistoryView(),
+          ],
         ),
       ),
     );
   }
 }
+
+// =====================================================================
+// Prognoză
+// =====================================================================
 
 class _ForecastView extends StatelessWidget {
   const _ForecastView({required this.forecast, required this.place});
@@ -129,53 +163,61 @@ class _ForecastView extends StatelessWidget {
     final trendText = trend.abs() < 1
         ? 'stabilă'
         : trend < 0
-        ? 'în scădere (${trend.toStringAsFixed(1)} hPa/3h)'
-        : 'în creștere (+${trend.toStringAsFixed(1)} hPa/3h)';
-    final today = f.days.isNotEmpty ? f.days.first : null;
+        ? 'în scădere (${trend.toStringAsFixed(1)} hPa în 3 ore)'
+        : 'în creștere (+${trend.toStringAsFixed(1)} hPa în 3 ore)';
 
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        // ---------- acum ----------
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(place, style: text.titleMedium),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '${c.temp.toStringAsFixed(0)}°',
-                      style: text.displayMedium,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Presiune ${c.pressure.toStringAsFixed(0)} hPa'),
-                          Text(trendText, style: text.bodySmall),
-                          Text(
-                            'Vânt ${c.wind.toStringAsFixed(0)} km/h ${windDirName(c.windDir)}',
-                          ),
-                          Text(
-                            '${moon.emoji} ${moon.name} (${(moon.illumination * 100).round()}%)',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  '${c.temp.toStringAsFixed(0)}°',
+                  style: text.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w300,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                if (today != null) ...[
-                  const Divider(height: 24),
-                  _ScoreRow(day: today, label: 'Azi'),
-                ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Acum la $place', style: text.titleSmall),
+                      Text(
+                        'Presiune ${c.pressure.toStringAsFixed(0)} hPa, $trendText',
+                      ),
+                      Text(
+                        'Vânt ${c.wind.toStringAsFixed(0)} km/h din ${windDirName(c.windDir)}',
+                      ),
+                      Text(
+                        '${moon.emoji} ${moon.name} (${(moon.illumination * 100).round()}%)',
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
+
+        // ---------- banda celor 7 zile ----------
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Row(
+              children: [
+                for (final d in f.days) Expanded(child: _DayColumn(day: d)),
+              ],
+            ),
+          ),
+        ),
+
+        // ---------- presiunea ----------
         Card(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
@@ -194,22 +236,31 @@ class _ForecastView extends StatelessWidget {
             ),
           ),
         ),
-        for (final d in f.days.skip(1))
+
+        // ---------- detaliu pe fiecare zi ----------
+        for (final (i, d) in f.days.indexed)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: _ScoreRow(
+              child: _DayDetail(
                 day: d,
-                label: DateFormat('EEEE, d MMM').format(d.date),
+                label: i == 0
+                    ? 'Azi'
+                    : i == 1
+                    ? 'Mâine'
+                    : toBeginningOfSentenceCase(
+                        DateFormat('EEEE, d MMM').format(d.date),
+                      ),
               ),
             ),
           ),
-        const Padding(
-          padding: EdgeInsets.all(8),
+        Padding(
+          padding: const EdgeInsets.all(8),
           child: Text(
-            'Scorul combină tendința presiunii, vântul, faza lunii și ploaia. '
-            'Cele mai bune ore sunt de obicei în jurul răsăritului și apusului.',
-            style: TextStyle(fontSize: 12),
+            'Prognoză de consens: mediana modelelor ${f.modelNames.join(', ')}. '
+            '„Sigură” = modelele se potrivesc; „Incertă” = diferă mult între ele. '
+            'Scorul de pescuit combină tendința presiunii, vântul, luna și ploaia.',
+            style: const TextStyle(fontSize: 12),
           ),
         ),
       ],
@@ -217,31 +268,104 @@ class _ForecastView extends StatelessWidget {
   }
 }
 
-class _ScoreRow extends StatelessWidget {
-  const _ScoreRow({required this.day, required this.label});
+Color _scoreColor(int score) => switch (score) {
+  >= 8 => Sea.good,
+  >= 6 => Sea.teal,
+  >= 4 => Sea.ok,
+  _ => Sea.bad,
+};
+
+Color _certaintyColor(double c) =>
+    c >= 0.7 ? Sea.good : (c >= 0.45 ? Sea.ok : Sea.bad);
+
+IconData _skyIcon(DayForecast d) => d.precip >= 5
+    ? Icons.thunderstorm_outlined
+    : d.precip >= 1
+    ? Icons.water_drop_outlined
+    : d.windMax >= 35
+    ? Icons.air
+    : Icons.wb_sunny_outlined;
+
+/// Coloana unei zile în banda de 7 zile.
+class _DayColumn extends StatelessWidget {
+  const _DayColumn({required this.day});
+  final DayForecast day;
+
+  @override
+  Widget build(BuildContext context) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    final now = DateTime.now();
+    final isToday = day.date.day == now.day && day.date.month == now.month;
+    return Column(
+      children: [
+        Text(
+          isToday ? 'Azi' : DateFormat('EEE').format(day.date),
+          style: small?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        Text(DateFormat('d.MM').format(day.date), style: small),
+        const SizedBox(height: 6),
+        Icon(
+          _skyIcon(day),
+          size: 22,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${day.tMax.toStringAsFixed(0)}°',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        Text('${day.tMin.toStringAsFixed(0)}°', style: small),
+        const SizedBox(height: 6),
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: _scoreColor(day.score),
+          child: Text(
+            '${day.score}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 22,
+          height: 4,
+          decoration: BoxDecoration(
+            color: _certaintyColor(day.certainty),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayDetail extends StatelessWidget {
+  const _DayDetail({required this.day, required this.label});
   final DayForecast day;
   final String label;
 
   @override
   Widget build(BuildContext context) {
     final hm = DateFormat('HH:mm');
-    final color = switch (day.score) {
-      >= 8 => Sea.good,
-      >= 6 => Sea.teal,
-      >= 4 => Sea.ok,
-      _ => Sea.bad,
-    };
+    final small = Theme.of(context).textTheme.bodySmall;
     final dawn = day.sunrise.subtract(const Duration(hours: 1));
     final dusk = day.sunset.subtract(const Duration(hours: 1));
+    final dp = day.pressureChange;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CircleAvatar(
-          backgroundColor: color,
+          radius: 22,
+          backgroundColor: _scoreColor(day.score),
           child: Text(
             '${day.score}',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
         ),
@@ -250,20 +374,55 @@ class _ScoreRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$label · ${day.scoreLabel} de pescuit',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _certaintyColor(day.certainty)
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      day.certaintyLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _certaintyColor(day.certainty),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
               Text(
-                '$label · ${day.scoreLabel}',
-                style: Theme.of(context).textTheme.titleSmall,
+                '🌡 ${day.tMin.toStringAsFixed(0)}° / ${day.tMax.toStringAsFixed(0)}°   '
+                '💨 max ${day.windMax.toStringAsFixed(0)} km/h   '
+                '💧 ${day.precip.toStringAsFixed(1)} mm',
               ),
               Text(
-                '${day.tMin.toStringAsFixed(0)}°/${day.tMax.toStringAsFixed(0)}° · '
-                'vânt max ${day.windMax.toStringAsFixed(0)} km/h · '
-                'ploaie ${day.precip.toStringAsFixed(1)} mm · ${day.moon.emoji}',
-                style: Theme.of(context).textTheme.bodySmall,
+                'Presiune ${dp.abs() < 3
+                    ? 'stabilă'
+                    : dp < 0
+                    ? 'în scădere'
+                    : 'în creștere'} '
+                '(${dp >= 0 ? '+' : ''}${dp.toStringAsFixed(1)} hPa) · '
+                '${day.moon.emoji} ${day.moon.name}',
+                style: small,
               ),
               Text(
                 'Ore bune: ${hm.format(dawn)}–${hm.format(day.sunrise.add(const Duration(hours: 2)))}'
                 ' și ${hm.format(dusk)}–${hm.format(day.sunset.add(const Duration(hours: 1)))}',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: small,
               ),
             ],
           ),
@@ -286,12 +445,9 @@ class _PressureChart extends StatelessWidget {
         FlSpot(h.time.difference(t0).inMinutes / 60, h.pressure),
     ];
     final now = DateTime.now().difference(t0).inMinutes / 60;
-    final minY =
-        spots.map((s) => s.y).reduce((a, b) => a < b ? a : b).floorToDouble() -
-        2;
-    final maxY =
-        spots.map((s) => s.y).reduce((a, b) => a > b ? a : b).ceilToDouble() +
-        2;
+    final ys = spots.map((s) => s.y);
+    final minY = ys.reduce((a, b) => a < b ? a : b).floorToDouble() - 2;
+    final maxY = ys.reduce((a, b) => a > b ? a : b).ceilToDouble() + 2;
     return LineChart(
       LineChartData(
         minY: minY,
@@ -351,6 +507,272 @@ class _PressureChart extends StatelessWidget {
             color: scheme.primary,
             barWidth: 2.5,
             dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: scheme.primary.withValues(alpha: 0.12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================================
+// Istoric pe sezon (date colectate în locația sezonului)
+// =====================================================================
+
+class _HistoryView extends StatefulWidget {
+  const _HistoryView();
+
+  @override
+  State<_HistoryView> createState() => _HistoryViewState();
+}
+
+class _HistoryViewState extends State<_HistoryView> {
+  String? _seasonId;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final seasons = store.seasons.toList()
+      ..sort((a, b) => b.start.compareTo(a.start));
+    if (seasons.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Adaugă un sezon (cu locația lui) — vremea se colectează '
+            'automat pe perioada sezonului.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    final Season season =
+        store.season(_seasonId) ?? store.currentSeason ?? seasons.first;
+    final days = store.weatherForSeason(season);
+    final text = Theme.of(context).textTheme;
+    final sources = days
+        .map((d) => d.source)
+        .where((s) => s.isNotEmpty)
+        .toSet();
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        final added = await store.collectWeather();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                added == 0 ? 'Datele sunt la zi.' : 'Am adăugat $added zile.',
+              ),
+            ),
+          );
+        }
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: season.id,
+            decoration: const InputDecoration(labelText: 'Sezon'),
+            items: [
+              for (final s in seasons)
+                DropdownMenuItem(
+                  value: s.id,
+                  child: Text('${s.title} · ${s.place.name}'),
+                ),
+            ],
+            onChanged: (v) => setState(() => _seasonId = v),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: store.collectingWeather
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cloud_download_outlined),
+              title: Text(
+                '${season.place.name} · ${days.length} zile colectate',
+              ),
+              subtitle: Text(
+                days.isEmpty
+                    ? (season.start.isAfter(DateTime.now())
+                          ? 'Sezonul nu a început — colectarea pornește din '
+                                '${DateFormat('d MMMM').format(season.start)}.'
+                          : 'Se colectează automat când ai internet. '
+                                'Trage în jos pentru a încerca acum.')
+                    : 'Sursa: ${sources.join(' + ')} (date de analiză, '
+                          'zi de zi). Trage în jos pentru actualizare.',
+              ),
+            ),
+          ),
+          if (days.length > 1)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 8),
+                      child: Text(
+                        'Presiunea medie zilnică (hPa) · '
+                        'punctele portocalii = zile cu capturi',
+                        style: text.titleSmall,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 180,
+                      child: _HistoryChart(
+                        days: days.reversed.toList(),
+                        catchDays: {
+                          for (final c in store.catches)
+                            WeatherDay.keyFor(c.date),
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          for (final d in days)
+            _WeatherDayTile(
+              day: d,
+              catches: store.catches
+                  .where((c) => WeatherDay.keyFor(c.date) == d.key)
+                  .length,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeatherDayTile extends StatelessWidget {
+  const _WeatherDayTile({required this.day, required this.catches});
+  final WeatherDay day;
+  final int catches;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = day;
+    final trendIcon = d.pChange.abs() < 3
+        ? Icons.trending_flat
+        : d.pChange < 0
+        ? Icons.trending_down
+        : Icons.trending_up;
+    final trendColor = d.pChange.abs() < 3
+        ? Sea.good
+        : d.pChange < 0
+        ? Sea.ok
+        : Sea.bad;
+    return Card(
+      child: ListTile(
+        leading: Icon(trendIcon, color: trendColor, size: 30),
+        title: Text(
+          toBeginningOfSentenceCase(
+            DateFormat('EEEE, d MMM yyyy').format(d.date),
+          ),
+        ),
+        subtitle: Text(
+          '${d.tMin.toStringAsFixed(0)}°/${d.tMax.toStringAsFixed(0)}° · '
+          '${d.pAvg.toStringAsFixed(0)} hPa '
+          '(${d.pChange >= 0 ? '+' : ''}${d.pChange.toStringAsFixed(1)}) · '
+          'vânt ${d.windMax.toStringAsFixed(0)} km/h ${windDirName(d.windDir)}'
+          '${d.precip > 0.1 ? ' · ploaie ${d.precip.toStringAsFixed(1)} mm' : ''}',
+        ),
+        trailing: catches > 0
+            ? Chip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.set_meal, size: 16),
+                label: Text('$catches'),
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class _HistoryChart extends StatelessWidget {
+  const _HistoryChart({required this.days, required this.catchDays});
+
+  /// Zilele în ordine cronologică.
+  final List<WeatherDay> days;
+  final Set<String> catchDays;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final spots = [
+      for (var i = 0; i < days.length; i++) FlSpot(i.toDouble(), days[i].pAvg),
+    ];
+    final ys = spots.map((s) => s.y);
+    final minY = ys.reduce((a, b) => a < b ? a : b).floorToDouble() - 2;
+    final maxY = ys.reduce((a, b) => a > b ? a : b).ceilToDouble() + 2;
+    final step = (days.length / 5).ceilToDouble().clamp(1, 1000).toDouble();
+    return LineChart(
+      LineChartData(
+        minY: minY,
+        maxY: maxY,
+        gridData: const FlGridData(drawVerticalLine: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(),
+          rightTitles: const AxisTitles(),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: step,
+              getTitlesWidget: (v, _) {
+                final i = v.round();
+                if (i < 0 || i >= days.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    DateFormat('d MMM').format(days[i].date),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (items) => [
+              for (final it in items)
+                LineTooltipItem(
+                  '${DateFormat('d MMM').format(days[it.x.round()].date)}\n'
+                  '${it.y.toStringAsFixed(1)} hPa',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+            ],
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: scheme.primary,
+            barWidth: 2.5,
+            dotData: FlDotData(
+              checkToShowDot: (s, _) =>
+                  catchDays.contains(days[s.x.round()].key),
+              getDotPainter: (_, _, _, _) => FlDotCirclePainter(
+                radius: 5,
+                color: Sea.sunset,
+                strokeColor: Colors.white,
+                strokeWidth: 1.5,
+              ),
+            ),
             belowBarData: BarAreaData(
               show: true,
               color: scheme.primary.withValues(alpha: 0.12),

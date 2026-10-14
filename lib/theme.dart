@@ -59,7 +59,13 @@ ThemeData buildTheme(Brightness brightness) {
       color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        // contur subțire: închis pe luminos, deschis pe dark
+        side: BorderSide(
+          color: dark
+              ? Sea.aqua.withValues(alpha: 0.35)
+              : Sea.navy.withValues(alpha: 0.55),
+          width: 0.8,
+        ),
       ),
       margin: const EdgeInsets.symmetric(vertical: 5),
     ),

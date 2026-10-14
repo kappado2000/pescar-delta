@@ -97,7 +97,6 @@ class _QuickExpenseState extends State<_QuickExpense> {
   String _amount = '';
   late String _payer;
   bool _common = true;
-  int _savedCount = 0;
 
   @override
   void initState() {
@@ -143,7 +142,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
     });
   }
 
-  Future<void> _save({required bool another}) async {
+  Future<void> _save() async {
     final store = context.read<AppStore>();
     final messenger = ScaffoldMessenger.of(context);
     final season = widget.season;
@@ -170,14 +169,22 @@ class _QuickExpenseState extends State<_QuickExpense> {
       ),
     );
     if (!mounted) return;
-    if (another) {
-      setState(() {
-        _savedCount++;
-        _amount = p.amount == null ? '' : _fmt(p.amount!);
-      });
-    } else {
-      Navigator.pop(context);
-    }
+    // înapoi la carduri: soldul cardului arată deja și cheltuiala asta
+    setState(() {
+      _preset = null;
+      _amount = '';
+    });
+  }
+
+  /// Totalul cheltuit în sezon pe un bun (după presetare sau după nume).
+  (double, int) _totalFor(ExpensePreset p) {
+    final name = p.name.trim().toLowerCase();
+    final list = widget.season.expenses.where(
+      (e) =>
+          (p.id.isNotEmpty && e.presetId == p.id) ||
+          (e.presetId == null && e.description.trim().toLowerCase() == name),
+    );
+    return (list.fold(0.0, (s, e) => s + e.amount), list.length);
   }
 
   @override
@@ -210,7 +217,10 @@ class _QuickExpenseState extends State<_QuickExpense> {
                   _BigTile(
                     icon: expenseIcon(p.category, p.name),
                     label: p.name,
-                    sub: p.amount == null ? null : lei(p.amount!),
+                    sub: switch (_totalFor(p)) {
+                      (_, 0) => 'nimic încă',
+                      (final sum, final n) => '${lei(sum)} · $n×',
+                    },
                     color: p.common ? Sea.ocean : Sea.sunset,
                     onTap: () => _choose(p),
                   ),
@@ -260,7 +270,6 @@ class _QuickExpenseState extends State<_QuickExpense> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (_savedCount > 0) Chip(label: Text('$_savedCount salvate')),
             ],
           ),
           // suma, mare
@@ -363,33 +372,17 @@ class _QuickExpenseState extends State<_QuickExpense> {
               ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                  ),
-                  onPressed: canSave ? () => _save(another: true) : null,
-                  child: const Text('Salvează + încă una'),
-                ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+              textStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(56),
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  onPressed: canSave ? () => _save(another: false) : null,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Salvează'),
-                ),
-              ),
-            ],
+            ),
+            onPressed: canSave ? _save : null,
+            icon: const Icon(Icons.check),
+            label: const Text('Salvează'),
           ),
         ],
       ),

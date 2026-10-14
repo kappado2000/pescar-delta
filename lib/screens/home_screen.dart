@@ -235,7 +235,13 @@ class _HomeScreenState extends State<HomeScreen> {
         '${needs.where((i) => i.done).length}/${needs.length}',
         3,
       ),
-      row(Icons.account_balance_wallet_outlined, Sea.teal, 'Cheltuieli', lei(spent), 4),
+      row(
+        Icons.account_balance_wallet_outlined,
+        Sea.teal,
+        'Cheltuieli',
+        lei(spent),
+        4,
+      ),
       row(
         Icons.groups_outlined,
         Sea.deep,

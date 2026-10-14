@@ -61,7 +61,10 @@ class SeasonDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          Text('${fmt.format(season.start)} – ${fmt.format(season.end)}'),
+          Text(
+            '📍 ${season.place.name} · '
+            '${fmt.format(season.start)} – ${fmt.format(season.end)}',
+          ),
           const SizedBox(height: 16),
 
           // ---------- Participanți ----------

@@ -16,7 +16,10 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
-        RepaintBoundary(key: key, child: DeltaScene(time: t)),
+        RepaintBoundary(
+          key: key,
+          child: DeltaScene(time: t),
+        ),
       );
       if (out == null) return;
       await tester.runAsync(() async {
@@ -24,7 +27,8 @@ void main() {
             key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
         final image = await boundary.toImage();
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('$out/${t.name}.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+        File('$out/${t.name}.png')
+            .writeAsBytesSync(bytes!.buffer.asUint8List());
       });
     });
   }

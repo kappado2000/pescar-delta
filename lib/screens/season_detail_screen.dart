@@ -113,6 +113,37 @@ class SeasonDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
+          // ---------- Perioada permiselor ----------
+          Card(
+            color: season.permitStart == null
+                ? Theme.of(context).colorScheme.errorContainer
+                : null,
+            child: ListTile(
+              leading: const Icon(Icons.event_available),
+              title: const Text('Ziua de început a permiselor'),
+              subtitle: Text(
+                season.permitStart == null
+                    ? 'Apasă și scrie ziua (ex. 15.05.${season.year})'
+                    : fmt.format(season.permitStart!),
+              ),
+              trailing: const Icon(Icons.keyboard_outlined),
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialEntryMode: DatePickerEntryMode.input,
+                  initialDate: season.permitStart ?? DateTime.now(),
+                  firstDate: DateTime(season.year, 1, 1),
+                  lastDate: DateTime(season.year, 12, 31),
+                  helpText: 'Ziua de început a permiselor',
+                  fieldHintText: 'zz.ll.aaaa',
+                );
+                if (d == null) return;
+                season.permitStart = d;
+                await store.upsertSeason(season);
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
           // ---------- Durate ----------
           Text('Permis acces turist (plătit)', style: text.titleSmall),
           const SizedBox(height: 6),

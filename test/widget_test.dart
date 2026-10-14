@@ -28,6 +28,7 @@ void main() {
     participantIds: ['p1', 'p2'],
     boatIds: ['b1'],
     accessDuration: AccessDuration.zile7,
+    permitStart: DateTime(DateTime.now().year + 1, 3, 1),
   );
 
   test('pensionarul primește permisul de acces gratuit', () {
@@ -59,6 +60,16 @@ void main() {
     final b = tasks.singleWhere((t) => t.kind == PermitKind.barca);
     expect(b.product.id, 9);
     expect(b.missing, containsAll(['nr. înmatriculare', 'port']));
+  });
+
+  test('fără ziua de început, permisele nu sunt gata', () {
+    final s = season()..permitStart = null;
+    final tasks = buildPermitTasks(
+      season: s,
+      participants: [pensionar],
+      boats: [],
+    );
+    expect(tasks.every((t) => t.missing.contains('ziua de început')), isTrue);
   });
 
   test('sezoanele din anii trecuți sunt arhivate', () {

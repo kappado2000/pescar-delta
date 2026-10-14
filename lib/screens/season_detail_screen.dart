@@ -385,6 +385,7 @@ class _PermitsTab extends StatelessWidget {
               );
               if (d == null) return;
               season.permitStart = d;
+              season.syncPeriodWithPermits();
               await store.upsertSeason(season);
             },
           ),
@@ -403,6 +404,7 @@ class _PermitsTab extends StatelessWidget {
           selected: {season.accessDuration},
           onSelectionChanged: (v) {
             season.accessDuration = v.first;
+            season.syncPeriodWithPermits();
             store.upsertSeason(season);
           },
         ),

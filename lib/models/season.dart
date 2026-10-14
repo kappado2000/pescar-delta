@@ -89,6 +89,27 @@ class Season {
   /// Cheltuielile sezonului (comune sau personale).
   List<Expense> expenses;
 
+  /// Ultima zi acoperită de un permis de [d] care începe în [from].
+  static DateTime endFor(DateTime from, AccessDuration d) => switch (d) {
+    AccessDuration.zi1 => DateTime(from.year, from.month, from.day),
+    AccessDuration.zile7 => DateTime(from.year, from.month, from.day + 6),
+    AccessDuration.an => DateTime(from.year, 12, 31),
+  };
+
+  /// Aliniază perioada sezonului cu permisele (începutul și durata lor).
+  /// Întoarce true dacă s-a schimbat ceva.
+  bool syncPeriodWithPermits() {
+    final from = permitStart;
+    if (from == null) return false;
+    final newStart = DateTime(from.year, from.month, from.day);
+    final newEnd = endFor(newStart, accessDuration);
+    if (newStart == start && newEnd == end) return false;
+    start = newStart;
+    end = newEnd;
+    year = newStart.year;
+    return true;
+  }
+
   String get title => '${kind.label} $year';
   String get folderName => '$year-${kind.name}';
 

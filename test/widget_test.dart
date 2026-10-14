@@ -176,6 +176,24 @@ void main() {
     expect(expenses.map((e) => e.number), [1, 2, 3]);
   });
 
+  test('perioada sezonului urmează permisele (7 zile)', () {
+    final s = Season(
+      id: 'x',
+      year: 2026,
+      kind: SeasonKind.toamna,
+      start: DateTime(2026, 10, 19),
+      end: DateTime(2026, 11, 30),
+      accessDuration: AccessDuration.zile7,
+      permitStart: DateTime(2026, 10, 19),
+    );
+    expect(s.syncPeriodWithPermits(), isTrue);
+    expect(s.end, DateTime(2026, 10, 25));
+    expect(s.syncPeriodWithPermits(), isFalse);
+    s.accessDuration = AccessDuration.an;
+    s.syncPeriodWithPermits();
+    expect(s.end, DateTime(2026, 12, 31));
+  });
+
   test('sezoanele din anii trecuți sunt arhivate', () {
     final s = season()..year = DateTime.now().year - 1;
     expect(s.archived, isTrue);

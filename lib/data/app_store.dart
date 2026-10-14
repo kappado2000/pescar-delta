@@ -93,6 +93,10 @@ class AppStore extends ChangeNotifier {
     }
     await _seedOnce();
     await _seedPresetsOnce();
+    // perioada sezoanelor urmează permisele (ex. 7 zile de la ziua de început)
+    if (seasons.map((s) => s.syncPeriodWithPermits()).toList().any((c) => c)) {
+      await _save('seasons', seasons);
+    }
     collectWeather(); // în fundal; fără semnal pur și simplu nu adaugă nimic
   }
 

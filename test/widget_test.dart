@@ -129,6 +129,48 @@ void main() {
     expect(t.every((x) => x.to == 'A'), isTrue);
   });
 
+  test('2 participanți: cheltuiala comună se împarte la 2', () {
+    final now = DateTime(2026, 5, 1);
+    final expenses = [
+      Expense(
+        id: '1',
+        description: 'Benzină barcă',
+        amount: 300,
+        paidBy: 'Ionescu',
+        common: true,
+        sharedWith: ['Ionescu', 'Ion'],
+        date: now,
+      ),
+      Expense(
+        id: '2',
+        description: 'Benzină barcă',
+        amount: 100,
+        paidBy: 'Ionescu',
+        common: true,
+        sharedWith: ['Ionescu', 'Ion'],
+        date: now,
+      ),
+      // cheltuiala proprie nu creează datorii
+      Expense(
+        id: '3',
+        description: 'Cârlige',
+        amount: 40,
+        paidBy: 'Ion',
+        common: false,
+        sharedWith: ['Ion'],
+        date: now,
+      ),
+    ];
+    final common = expenses.where((e) => e.common).toList();
+    final b = balancesOf(common, ['Ionescu', 'Ion']);
+    expect(b['Ion']!.commonShare, 200);
+    final t = settle(b).single;
+    expect((t.from, t.to, t.amount), ('Ion', 'Ionescu', 200.0));
+    expect(settle(balancesOf(expenses, ['Ionescu', 'Ion'])).single.amount, 200);
+    expect(numberExpenses(expenses), 4);
+    expect(expenses.map((e) => e.number), [1, 2, 3]);
+  });
+
   test('sezoanele din anii trecuți sunt arhivate', () {
     final s = season()..year = DateTime.now().year - 1;
     expect(s.archived, isTrue);

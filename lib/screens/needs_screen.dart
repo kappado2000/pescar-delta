@@ -7,6 +7,7 @@ import '../models/need_item.dart';
 import '../models/season.dart';
 import '../theme.dart';
 import '../widgets/need_picker.dart';
+import '../widgets/swipe_delete.dart';
 import 'need_categories_screen.dart';
 
 /// Pagina „Necesar”: ce trebuie pregătit pentru sezon, pe 7 categorii,
@@ -222,25 +223,9 @@ class _NeedListState extends State<_NeedList>
   }
 
   void _remove(NeedItem item) {
-    final index = _items.indexOf(item);
     setState(() => _items.remove(item));
+    _controllers.remove(item.id)?.dispose();
     _save();
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Șters: ${item.text}'),
-          action: SnackBarAction(
-            label: 'Anulează',
-            onPressed: () {
-              setState(
-                () => _items.insert(index.clamp(0, _items.length), item),
-              );
-              _save();
-            },
-          ),
-        ),
-      );
   }
 
   @override
@@ -290,16 +275,12 @@ class _NeedListState extends State<_NeedList>
             },
             itemBuilder: (context, i) {
               final item = items[i];
-              return Dismissible(
+              return SwipeToDelete(
                 key: ValueKey(item.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  color: Sea.coral,
-                  child: const Icon(Icons.delete_outline, color: Colors.white),
-                ),
-                onDismissed: (_) => _remove(item),
+                id: item.id,
+                number: i + 1,
+                text: _controllerFor(item).text,
+                onDelete: () => _remove(item),
                 child: Card(
                   margin: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
@@ -307,18 +288,28 @@ class _NeedListState extends State<_NeedList>
                       ReorderableDragStartListener(
                         index: i,
                         child: Container(
-                          width: 44,
+                          width: 64,
                           alignment: Alignment.center,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Text(
-                            '${i + 1}.',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: item.done
-                                  ? scheme.outline
-                                  : scheme.primary,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.drag_indicator,
+                                size: 20,
+                                color: scheme.outline,
+                              ),
+                              Text(
+                                '${i + 1}.',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: item.done
+                                      ? scheme.outline
+                                      : scheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

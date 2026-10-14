@@ -7,20 +7,40 @@ import '../models/need_item.dart';
 import '../models/season.dart';
 import '../theme.dart';
 import '../widgets/need_picker.dart';
+import 'need_categories_screen.dart';
 
 /// Pagina „Necesar”: ce trebuie pregătit pentru sezon, pe 7 categorii,
 /// fiecare cu rânduri numerotate.
 class NeedsScreen extends StatelessWidget {
-  const NeedsScreen({super.key, required this.seasonId});
+  const NeedsScreen({super.key, required this.seasonId, this.initialTab = 0});
   final String seasonId;
+
+  /// Categoria deschisă la intrare (0 = Echipament pescuit).
+  final int initialTab;
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final season = store.season(seasonId);
     if (season == null) return const Scaffold();
+    final cats = store.needCategories;
+    if (cats.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Necesar · ${season.title}')),
+        body: Center(
+          child: FilledButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Creează o categorie'),
+            onPressed: () => editNeedCategory(context, null),
+          ),
+        ),
+      );
+    }
     return DefaultTabController(
-      length: NeedCategory.values.length,
+      // se reconstruiește când se schimbă categoriile
+      key: ValueKey(cats.map((c) => c.id).join('|')),
+      length: cats.length,
+      initialIndex: initialTab.clamp(0, cats.length - 1),
       child: Scaffold(
         appBar: AppBar(
           title: Text('Necesar · ${season.title}'),
@@ -28,7 +48,15 @@ class NeedsScreen extends StatelessWidget {
             PopupMenuButton<String>(
               onSelected: (v) {
                 if (v == 'copy') _pick(context, store, season);
-                if (v == 'share') _share(season);
+                if (v == 'share') _share(store, season);
+                if (v == 'cats') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NeedCategoriesScreen(),
+                    ),
+                  );
+                }
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(
@@ -45,6 +73,13 @@ class NeedsScreen extends StatelessWidget {
                     title: Text('Trimite lista'),
                   ),
                 ),
+                PopupMenuItem(
+                  value: 'cats',
+                  child: ListTile(
+                    leading: Icon(Icons.category_outlined),
+                    title: Text('Categorii (adaugă / modifică)'),
+                  ),
+                ),
               ],
             ),
           ],
@@ -52,7 +87,7 @@ class NeedsScreen extends StatelessWidget {
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              for (final (i, c) in NeedCategory.values.indexed)
+              for (final (i, c) in cats.indexed)
                 Tab(
                   child: _TabLabel(index: i + 1, category: c, season: season),
                 ),
@@ -61,8 +96,8 @@ class NeedsScreen extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            for (final c in NeedCategory.values)
-              _NeedList(key: ValueKey(c), season: season, category: c),
+            for (final c in cats)
+              _NeedList(key: ValueKey(c.id), season: season, category: c),
           ],
         ),
       ),
@@ -83,11 +118,11 @@ class NeedsScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _share(Season season) async {
+  Future<void> _share(AppStore store, Season season) async {
     final b = StringBuffer(
       'NECESAR — ${season.title} (${season.place.name})\n',
     );
-    for (final (ci, c) in NeedCategory.values.indexed) {
+    for (final (ci, c) in store.needCategories.indexed) {
       final items = season
           .needsOf(c)
           .where((i) => i.text.trim().isNotEmpty)

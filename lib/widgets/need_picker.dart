@@ -29,7 +29,7 @@ List<NeedSuggestion> needSuggestions(
     for (final i in s.needsOf(c)) {
       final key = _norm(i.text);
       if (key.isEmpty || present.contains(key)) continue;
-      if (c == NeedCategory.probleme && i.done) continue;
+      if (c.isProblems && i.done) continue;
       byText
           .putIfAbsent(key, () => NeedSuggestion(i.text.trim(), []))
           .seasons
@@ -47,7 +47,7 @@ Future<int> pickNeedsFromOtherSeasons(
   Season season, {
   NeedCategory? only,
 }) async {
-  final categories = only == null ? NeedCategory.values : [only];
+  final categories = only == null ? store.needCategories : [only];
   final options = {
     for (final c in categories) c: needSuggestions(store, season, c),
   }..removeWhere((_, v) => v.isEmpty);
@@ -61,7 +61,10 @@ Future<int> pickNeedsFromOtherSeasons(
     context,
     MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (_) => _NeedPickerScreen(options: options),
+      builder: (_) => _NeedPickerScreen(
+        options: options,
+        order: store.needCategories.map((c) => c.id).toList(),
+      ),
     ),
   );
   if (picked == null) return 0;
@@ -77,8 +80,11 @@ Future<int> pickNeedsFromOtherSeasons(
 }
 
 class _NeedPickerScreen extends StatefulWidget {
-  const _NeedPickerScreen({required this.options});
+  const _NeedPickerScreen({required this.options, required this.order});
   final Map<NeedCategory, List<NeedSuggestion>> options;
+
+  /// id-urile categoriilor, în ordinea lor (pentru numerotare).
+  final List<String> order;
 
   @override
   State<_NeedPickerScreen> createState() => _NeedPickerScreenState();
@@ -143,6 +149,7 @@ class _NeedPickerScreenState extends State<_NeedPickerScreen> {
                 for (final e in widget.options.entries)
                   if (e.value.any(_visible)) ...[
                     _SectionHeader(
+                      index: widget.order.indexOf(e.key.id),
                       category: e.key,
                       selected: _selected[e.key]?.length ?? 0,
                       total: e.value.length,
@@ -200,11 +207,13 @@ class _NeedPickerScreenState extends State<_NeedPickerScreen> {
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
+    required this.index,
     required this.category,
     required this.selected,
     required this.total,
     required this.onToggle,
   });
+  final int index;
   final NeedCategory category;
   final int selected;
   final int total;
@@ -221,7 +230,7 @@ class _SectionHeader extends StatelessWidget {
             radius: 11,
             backgroundColor: Sea.sunset,
             child: Text(
-              '${category.index + 1}',
+              '${index + 1}',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,

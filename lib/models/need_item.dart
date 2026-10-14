@@ -1,18 +1,55 @@
-/// Categoriile paginii „Necesar” a sezonului, în ordinea tab-urilor.
-enum NeedCategory {
-  echipament('Echipament pescuit', 'pregătit'),
-  tinuta('Ținută', 'pregătit'),
-  barca('Barcă', 'pregătit'),
-  momeli('Momeli', 'cumpărat'),
-  mancare('Mâncare-Băutură', 'cumpărat'),
-  alte('Alte nevoi', 'rezolvat'),
-  probleme('Probleme de remediat', 'remediat');
+/// O categorie a paginii „Necesar” (ex. Momeli). Categoriile sunt comune
+/// tuturor sezoanelor și se pot adăuga, redenumi, șterge și reordona.
+class NeedCategory {
+  NeedCategory({
+    required this.id,
+    required this.label,
+    this.doneLabel = 'bifat',
+  });
 
-  const NeedCategory(this.label, this.doneLabel);
-  final String label;
+  final String id;
+  String label;
 
-  /// Ce înseamnă bifa în categoria asta.
-  final String doneLabel;
+  /// Ce înseamnă bifa în categoria asta („pregătit”, „cumpărat”…).
+  String doneLabel;
+
+  /// Categoria problemelor: cele remediate nu se mai propun în alt sezon.
+  bool get isProblems => id == 'probleme';
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+    'doneLabel': doneLabel,
+  };
+
+  factory NeedCategory.fromJson(Map<String, dynamic> j) => NeedCategory(
+    id: j['id'],
+    label: j['label'] ?? '',
+    doneLabel: j['doneLabel'] ?? 'bifat',
+  );
+
+  /// Categoriile de pornire (id-urile păstrează datele deja introduse).
+  static List<NeedCategory> defaults() => [
+    NeedCategory(
+      id: 'echipament',
+      label: 'Echipament pescuit',
+      doneLabel: 'pregătit',
+    ),
+    NeedCategory(id: 'tinuta', label: 'Ținută', doneLabel: 'pregătit'),
+    NeedCategory(id: 'barca', label: 'Barcă', doneLabel: 'pregătit'),
+    NeedCategory(id: 'momeli', label: 'Momeli', doneLabel: 'cumpărat'),
+    NeedCategory(
+      id: 'mancare',
+      label: 'Mâncare-Băutură',
+      doneLabel: 'cumpărat',
+    ),
+    NeedCategory(id: 'alte', label: 'Alte nevoi', doneLabel: 'rezolvat'),
+    NeedCategory(
+      id: 'probleme',
+      label: 'Probleme de remediat',
+      doneLabel: 'remediat',
+    ),
+  ];
 }
 
 /// Un rând din lista de necesar.

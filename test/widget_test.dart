@@ -76,14 +76,19 @@ void main() {
 
   test('lista de necesar se salvează și se reîncarcă', () {
     final s = season();
-    s.needsOf(NeedCategory.momeli).add(NeedItem(id: 'n1', text: 'Porumb'));
+    final cats = {for (final c in NeedCategory.defaults()) c.id: c};
+    s.needsOf(cats['momeli']!).add(NeedItem(id: 'n1', text: 'Porumb'));
     s
-        .needsOf(NeedCategory.probleme)
+        .needsOf(cats['probleme']!)
         .add(NeedItem(id: 'n2', text: 'Motor', done: true));
     final back = Season.fromJson(s.toJson());
-    expect(back.needsOf(NeedCategory.momeli).single.text, 'Porumb');
-    expect(back.needsOf(NeedCategory.probleme).single.done, isTrue);
-    expect(back.needsOf(NeedCategory.tinuta), isEmpty);
+    expect(back.needsOf(cats['momeli']!).single.text, 'Porumb');
+    expect(back.needsOf(cats['probleme']!).single.done, isTrue);
+    expect(back.needsOf(cats['tinuta']!), isEmpty);
+    // o categorie nouă, creată de user
+    final noua = NeedCategory(id: 'x1', label: 'Medicamente');
+    s.needsOf(noua).add(NeedItem(id: 'n3', text: 'Plasturi'));
+    expect(Season.fromJson(s.toJson()).needsOf(noua).single.text, 'Plasturi');
   });
 
   test('cheltuieli: comune împărțite egal, personale, decontare', () {

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../models/boat.dart';
 import '../models/catch_entry.dart';
 import '../models/expense.dart';
+import '../models/need_item.dart';
 import '../models/participant.dart';
 import '../models/permit_file.dart';
 import '../models/season.dart';
@@ -33,6 +34,9 @@ class AppStore extends ChangeNotifier {
   final List<PermitFile> permitFiles = [];
   final List<ExpensePreset> expensePresets = [];
 
+  /// Categoriile paginii „Necesar” (comune tuturor sezoanelor).
+  final List<NeedCategory> needCategories = [];
+
   /// Vremea zilnică colectată: locație (`Place.key`) → zi (`yyyy-MM-dd`).
   final Map<String, Map<String, WeatherDay>> weatherLog = {};
   bool collectingWeather = false;
@@ -54,6 +58,11 @@ class AppStore extends ChangeNotifier {
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);
     _load('expensePresets', expensePresets, ExpensePreset.fromJson);
+    _load('needCategories', needCategories, NeedCategory.fromJson);
+    if (needCategories.isEmpty) {
+      needCategories.addAll(NeedCategory.defaults());
+      await _save('needCategories', needCategories);
+    }
     final rawLog = _box.get('weatherLog') as String?;
     if (rawLog != null) {
       final decoded = jsonDecode(rawLog);
@@ -137,6 +146,42 @@ class AppStore extends ChangeNotifier {
     }
     await _save('expensePresets', expensePresets);
     await _box.put('presetsSeeded', true);
+  }
+
+  // ---------- Categorii „Necesar” ----------
+  Future<NeedCategory> addNeedCategory(
+    String label, {
+    String doneLabel = 'bifat',
+  }) async {
+    final c = NeedCategory(id: newId(), label: label, doneLabel: doneLabel);
+    needCategories.add(c);
+    await _save('needCategories', needCategories);
+    return c;
+  }
+
+  Future<void> updateNeedCategory(NeedCategory c) =>
+      _save('needCategories', needCategories);
+
+  Future<void> reorderNeedCategory(int from, int to) async {
+    needCategories.insert(to, needCategories.removeAt(from));
+    await _save('needCategories', needCategories);
+  }
+
+  /// Câte rânduri are categoria în toate sezoanele.
+  int needItemsIn(NeedCategory c) => seasons.fold(
+    0,
+    (n, s) =>
+        n + (s.needs[c.id]?.where((i) => i.text.trim().isNotEmpty).length ?? 0),
+  );
+
+  /// Șterge categoria și rândurile ei din toate sezoanele.
+  Future<void> deleteNeedCategory(NeedCategory c) async {
+    needCategories.removeWhere((x) => x.id == c.id);
+    for (final s in seasons) {
+      s.needs.remove(c.id);
+    }
+    await _save('needCategories', needCategories);
+    await _save('seasons', seasons);
   }
 
   // ---------- Presetări cheltuieli ----------

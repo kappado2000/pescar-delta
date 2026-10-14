@@ -183,6 +183,25 @@ class _PermitBuyScreenState extends State<PermitBuyScreen> {
               ? 'Finalizare comandă'
               : '${_index + 1}/${_queue.length} · ${task.kind.label}',
         ),
+        // butoanele stau sus: tastatura nu le acoperă
+        actions: [
+          if (task != null && !_finishing) ...[
+            IconButton(
+              tooltip: 'Completează din nou',
+              icon: const Icon(Icons.refresh),
+              onPressed: _fill,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilledButton.tonal(
+                onPressed: _next,
+                child: Text(
+                  _index + 1 < _queue.length ? 'Următorul ›' : 'Spre coș ›',
+                ),
+              ),
+            ),
+          ],
+        ],
         bottom: _loading
             ? const PreferredSize(
                 preferredSize: Size.fromHeight(3),

@@ -26,7 +26,7 @@ class PescarDeltaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeMode = context.select<AppStore, ThemeMode>((s) => s.themeMode);
     return MaterialApp(
-      title: 'Pescar Deltă',
+      title: 'Pescuit',
       themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),

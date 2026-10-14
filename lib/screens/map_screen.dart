@@ -10,6 +10,7 @@ import '../models/spot.dart';
 import '../services/location_service.dart';
 import 'catches_screen.dart';
 import 'weather_screen.dart';
+import '../widgets/delta_scene.dart';
 
 /// Centrul Deltei Dunării.
 const _deltaCenter = LatLng(45.10, 29.20);
@@ -32,8 +33,10 @@ class _MapScreenState extends State<MapScreen> {
     final store = context.watch<AppStore>();
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hartă'),
+      appBar: SceneAppBar(
+        title: 'Hartă',
+        subtitle: '${store.spots.length} locuri salvate',
+        height: 104,
         actions: [
           IconButton(
             tooltip: _showCatches ? 'Ascunde capturile' : 'Arată capturile',

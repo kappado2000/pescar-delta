@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'data/app_store.dart';
 import 'screens/home_shell.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,22 +24,11 @@ class PescarDeltaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData theme(Brightness b) => ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1E6F6A),
-        brightness: b,
-      ),
-      useMaterial3: true,
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-    );
     return MaterialApp(
       title: 'Pescar Deltă',
       debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      darkTheme: theme(Brightness.dark),
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
       locale: const Locale('ro'),
       supportedLocales: const [Locale('ro'), Locale('en')],
       localizationsDelegates: const [

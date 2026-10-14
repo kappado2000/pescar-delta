@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
+import '../theme.dart';
+import '../widgets/delta_scene.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key, this.spotId});
@@ -64,8 +66,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
     };
     if (!sources.containsKey(_source)) _source = 'tulcea';
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Vreme și presiune'),
+      appBar: SceneAppBar(
+        title: 'Vreme și presiune',
+        subtitle: _placeName,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.place_outlined),
@@ -223,10 +226,10 @@ class _ScoreRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hm = DateFormat('HH:mm');
     final color = switch (day.score) {
-      >= 8 => Colors.green,
-      >= 6 => Colors.lightGreen,
-      >= 4 => Colors.orange,
-      _ => Colors.red,
+      >= 8 => Sea.good,
+      >= 6 => Sea.teal,
+      >= 4 => Sea.ok,
+      _ => Sea.bad,
     };
     final dawn = day.sunrise.subtract(const Duration(hours: 1));
     final dusk = day.sunset.subtract(const Duration(hours: 1));

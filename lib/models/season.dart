@@ -51,7 +51,7 @@ class Season {
     this.notes = '',
     this.permitStart,
     this.place = sfantuGheorghe,
-    Map<NeedCategory, List<NeedItem>>? needs,
+    Map<String, List<NeedItem>>? needs,
     List<Expense>? expenses,
   }) : needs = needs ?? {},
        expenses = expenses ?? [],
@@ -81,9 +81,10 @@ class Season {
   Place place;
 
   /// Pagina „Necesar”: liste numerotate pe categorii.
-  Map<NeedCategory, List<NeedItem>> needs;
+  /// id categorie → rânduri.
+  Map<String, List<NeedItem>> needs;
 
-  List<NeedItem> needsOf(NeedCategory c) => needs.putIfAbsent(c, () => []);
+  List<NeedItem> needsOf(NeedCategory c) => needs.putIfAbsent(c.id, () => []);
 
   /// Cheltuielile sezonului (comune sau personale).
   List<Expense> expenses;
@@ -116,7 +117,7 @@ class Season {
     'place': {'name': place.name, 'lat': place.lat, 'lng': place.lng},
     'needs': {
       for (final e in needs.entries)
-        e.key.name: e.value.map((i) => i.toJson()).toList(),
+        e.key: e.value.map((i) => i.toJson()).toList(),
     },
     'expenses': expenses.map((e) => e.toJson()).toList(),
   };
@@ -144,12 +145,11 @@ class Season {
             (j['place']['lng'] as num).toDouble(),
           ),
     needs: {
-      for (final c in NeedCategory.values)
-        if ((j['needs'] as Map?)?[c.name] case final List items)
-          c: [
-            for (final i in items)
-              NeedItem.fromJson(Map<String, dynamic>.from(i)),
-          ],
+      for (final e in ((j['needs'] as Map?) ?? {}).entries)
+        e.key as String: [
+          for (final i in e.value as List)
+            NeedItem.fromJson(Map<String, dynamic>.from(i)),
+        ],
     },
     expenses: [
       for (final e in (j['expenses'] as List? ?? []))

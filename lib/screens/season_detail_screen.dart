@@ -15,6 +15,7 @@ import '../theme.dart';
 import '../models/expense.dart';
 import '../widgets/quick_expense_sheet.dart';
 import 'expenses_screen.dart';
+import 'need_categories_screen.dart';
 import 'needs_screen.dart';
 import 'permit_buy_screen.dart';
 import 'seasons_screen.dart';
@@ -266,37 +267,130 @@ class SeasonDetailScreen extends StatelessWidget {
   }
 }
 
+/// „Necesar”: apeși și se deschide în jos cu toate categoriile; fiecare
+/// categorie se deschide la rândul ei cu nevoile, care se bifează pe loc.
 class _NeedsCard extends StatelessWidget {
   const _NeedsCard({required this.season});
   final Season season;
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      for (final c in NeedCategory.values)
-        ...season.needsOf(c).where((i) => i.text.trim().isNotEmpty),
-    ];
+    final store = context.read<AppStore>();
+    List<NeedItem> filled(NeedCategory c) =>
+        season.needsOf(c).where((i) => i.text.trim().isNotEmpty).toList();
+    final cats = store.needCategories;
+    final items = [for (final c in cats) ...filled(c)];
     final done = items.where((i) => i.done).length;
-    final problems = season
-        .needsOf(NeedCategory.probleme)
-        .where((i) => i.text.trim().isNotEmpty && !i.done)
+    final problems = cats
+        .where((c) => c.isProblems)
+        .expand(filled)
+        .where((i) => !i.done)
         .length;
+
+    void openTab(int index) => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NeedsScreen(seasonId: season.id, initialTab: index),
+      ),
+    );
+
     return Card(
       color: Sea.sunset.withValues(alpha: 0.12),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
         leading: const Icon(Icons.checklist, color: Sea.sunset, size: 32),
         title: const Text('Necesar pentru sezon'),
         subtitle: Text(
           items.isEmpty
-              ? 'Echipament, ținută, barcă, momeli, mâncare, alte nevoi, probleme'
+              ? 'Apasă ca să vezi categoriile'
               : '$done/${items.length} bifate'
                     '${problems > 0 ? ' · $problems probleme de remediat' : ''}',
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => NeedsScreen(seasonId: season.id)),
-        ),
+        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        children: [
+          for (final (i, c) in cats.indexed)
+            Builder(
+              builder: (context) {
+                final list = filled(c);
+                final catDone = list.where((x) => x.done).length;
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 3),
+                  child: ExpansionTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 13,
+                      backgroundColor: Sea.sunset,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Sea.navy,
+                        ),
+                      ),
+                    ),
+                    title: Text(c.label),
+                    subtitle: Text(
+                      list.isEmpty
+                          ? 'nimic notat'
+                          : '$catDone/${list.length} ${c.doneLabel}',
+                      style: TextStyle(
+                        color: list.isNotEmpty && catDone == list.length
+                            ? Sea.good
+                            : null,
+                      ),
+                    ),
+                    children: [
+                      for (final (n, item) in list.indexed)
+                        CheckboxListTile(
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          value: item.done,
+                          controlAffinity: ListTileControlAffinity.trailing,
+                          secondary: Text(
+                            '${n + 1}.',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          title: Text(
+                            item.text,
+                            style: TextStyle(
+                              decoration: item.done
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          onChanged: (v) {
+                            item.done = v ?? false;
+                            store.upsertSeason(season);
+                          },
+                        ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.edit_note),
+                          label: Text(
+                            list.isEmpty ? 'Adaugă' : 'Editează / adaugă',
+                          ),
+                          onPressed: () => openTab(i),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              icon: const Icon(Icons.category_outlined),
+              label: const Text('Categorii: adaugă / modifică / șterge'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NeedCategoriesScreen()),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -27,8 +27,8 @@ class ParticipantsScreen extends StatelessWidget {
               children: [
                 for (final p in store.participants)
                   ListTile(
-                    leading: CircleAvatar(
-                      child: Text(p.nume.isEmpty ? '?' : p.nume[0]),
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.person_outline),
                     ),
                     title: Text(p.fullName),
                     subtitle: Text(_subtitle(p)),

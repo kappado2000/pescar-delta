@@ -293,9 +293,7 @@ class _TeamTab extends StatelessWidget {
             value: season.participantIds.contains(p.id),
             title: Text(p.fullName),
             subtitle: Text(p.category.label),
-            secondary: Icon(
-              p.category.freeAccess ? Icons.elderly : Icons.person_outline,
-            ),
+            secondary: const Icon(Icons.person_outline),
             onChanged: (v) {
               v == true
                   ? season.participantIds.add(p.id)

@@ -2,7 +2,7 @@ import 'doc_copy.dart';
 
 /// Categoria determină dacă permisul de acces turist este gratuit (ARBDD).
 enum ParticipantCategory {
-  standard('Standard (plătește)', false),
+  standard('Standard', false),
   pensionar('Pensionar', true),
   elevStudent('Elev / student', true),
   veteran('Veteran', true),

@@ -178,12 +178,19 @@ class _ExpenseList extends StatelessWidget {
               subtitle: Text(
                 '${DateFormat('d MMM').format(e.date)} · plătit de '
                 '${store.participant(e.paidBy)?.fullName ?? '?'}\n'
-                '${e.common ? 'Comună · împărțită egal la ${e.sharedWith.length}' : 'Personală · ${store.participant(e.sharedWith.firstOrNull ?? e.paidBy)?.fullName ?? '?'}'}',
+                '${e.common ? 'La comun · împărțită egal la ${e.sharedWith.length}' : 'În sarcina lui'}',
               ),
               isThreeLine: true,
-              trailing: Text(
-                lei(e.amount),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    lei(e.amount),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  CommonToggle(season: season, expense: e),
+                ],
               ),
             ),
           ),
@@ -234,37 +241,65 @@ class _PerParticipant extends StatelessWidget {
                 const Divider(),
                 _row('Total de suportat', b.owes, bold: true),
                 const SizedBox(height: 8),
-                for (final e in season.expenses.where(
-                  (e) =>
-                      e.paidBy == b.participantId ||
-                      e.shares().containsKey(b.participantId),
-                ))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
+                if (season.expenses.any(
+                  (e) => e.paidBy == b.participantId,
+                )) ...[
+                  Text(
+                    'Cheltuieli în sarcina lui (bifă = intră la comun):',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  for (final e in season.expenses.where(
+                    (e) => e.paidBy == b.participantId,
+                  ))
+                    Row(
                       children: [
-                        Icon(
-                          e.paidBy == b.participantId
-                              ? Icons.payments_outlined
-                              : Icons.receipt_long_outlined,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            '${e.description.isEmpty ? e.category : e.description}'
-                            '${e.paidBy == b.participantId ? ' (a plătit ${lei(e.amount)})' : ''}',
-                            style: Theme.of(context).textTheme.bodySmall,
+                            '${DateFormat('d MMM').format(e.date)} · '
+                            '${e.description.isEmpty ? e.category : e.description}',
                           ),
                         ),
-                        if (e.shares()[b.participantId] case final share?)
-                          Text(
-                            lei(share),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                        Text(lei(e.amount)),
+                        CommonToggle(season: season, expense: e),
                       ],
                     ),
+                ],
+                if (season.expenses.any(
+                  (e) =>
+                      e.common &&
+                      e.paidBy != b.participantId &&
+                      e.sharedWith.contains(b.participantId),
+                )) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Partea lui din ce au plătit alții la comun:',
+                    style: Theme.of(context).textTheme.labelLarge,
                   ),
+                  for (final e in season.expenses.where(
+                    (e) =>
+                        e.common &&
+                        e.paidBy != b.participantId &&
+                        e.sharedWith.contains(b.participantId),
+                  ))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${e.description.isEmpty ? e.category : e.description}'
+                              ' (plătit de ${store.participant(e.paidBy)?.fullName ?? '?'})',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          Text(
+                            lei(e.shares()[b.participantId] ?? 0),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -384,9 +419,6 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
   late String _paidBy = _e.paidBy;
   late bool _common = _e.common;
   late final Set<String> _shared = {..._e.sharedWith};
-  late String _personalFor = _e.common
-      ? _e.paidBy
-      : (_e.sharedWith.firstOrNull ?? _e.paidBy);
   late String _category = _e.category;
   late DateTime _date = _e.date;
   bool _saveAsPreset = false;
@@ -511,7 +543,9 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
             initialValue: people.any((p) => p.id == _paidBy)
                 ? _paidBy
                 : people.first.id,
-            decoration: const InputDecoration(labelText: 'Cine a plătit'),
+            decoration: const InputDecoration(
+              labelText: 'Plătită de (în sarcina lui)',
+            ),
             items: [
               for (final p in people)
                 DropdownMenuItem(value: p.id, child: Text(p.fullName)),
@@ -519,28 +553,33 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
             onChanged: (v) => setState(() => _paidBy = v!),
           ),
           const SizedBox(height: 16),
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(
-                value: true,
-                icon: Icon(Icons.groups),
-                label: Text('Comună'),
+          Card(
+            color: (_common ? Sea.ocean : Sea.sunset).withValues(alpha: 0.10),
+            child: CheckboxListTile(
+              value: _common,
+              onChanged: (v) => setState(() {
+                _common = v ?? false;
+                if (_common && _shared.isEmpty) {
+                  _shared.addAll(people.map((p) => p.id));
+                }
+              }),
+              title: const Text('Intră la comun'),
+              subtitle: Text(
+                _common
+                    ? 'Se împarte în mod egal între participanții bifați mai jos'
+                    : 'Rămâne în sarcina lui '
+                          '${people.where((p) => p.id == _paidBy).firstOrNull?.fullName ?? '?'}',
               ),
-              ButtonSegment(
-                value: false,
-                icon: Icon(Icons.person),
-                label: Text('Personală'),
-              ),
-            ],
-            selected: {_common},
-            onSelectionChanged: (v) => setState(() => _common = v.first),
+            ),
           ),
-          const SizedBox(height: 12),
           if (_common) ...[
-            Text(
-              'Se împarte în mod egal la '
-              '(${_shared.length}${amount > 0 && _shared.isNotEmpty ? ' × ${lei(amount / _shared.length)}' : ''}):',
-              style: Theme.of(context).textTheme.titleSmall,
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Împărțită egal la ${_shared.length}'
+                '${amount > 0 && _shared.isNotEmpty ? ' × ${lei(amount / _shared.length)}' : ''}:',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
             ),
             for (final p in people)
               CheckboxListTile(
@@ -552,20 +591,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
                   () => v == true ? _shared.add(p.id) : _shared.remove(p.id),
                 ),
               ),
-          ] else
-            DropdownButtonFormField<String>(
-              initialValue: people.any((p) => p.id == _personalFor)
-                  ? _personalFor
-                  : people.first.id,
-              decoration: const InputDecoration(
-                labelText: 'A cui este cheltuiala',
-              ),
-              items: [
-                for (final p in people)
-                  DropdownMenuItem(value: p.id, child: Text(p.fullName)),
-              ],
-              onChanged: (v) => setState(() => _personalFor = v!),
-            ),
+          ],
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.event),
@@ -609,7 +635,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
                               for (final p in people)
                                 if (_shared.contains(p.id)) p.id,
                             ]
-                          : [_personalFor]
+                          : [_paidBy]
                       ..category = _category
                       ..date = _date;
                     if (!widget.season.expenses.any((x) => x.id == _e.id)) {
@@ -634,5 +660,53 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Bifa „comun” de pe o cheltuială: bifată = se împarte egal între toți
+/// participanții sezonului; debifată = rămâne în sarcina celui care a plătit.
+class CommonToggle extends StatelessWidget {
+  const CommonToggle({super.key, required this.season, required this.expense});
+  final Season season;
+  final Expense expense;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => _toggle(context),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: Checkbox(
+              value: expense.common,
+              visualDensity: VisualDensity.compact,
+              onChanged: (_) => _toggle(context),
+            ),
+          ),
+          Text(
+            'comun',
+            style: TextStyle(
+              fontSize: 12,
+              color: expense.common
+                  ? Sea.ocean
+                  : Theme.of(context).colorScheme.outline,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggle(BuildContext context) {
+    final store = context.read<AppStore>();
+    expense.common = !expense.common;
+    expense.sharedWith = expense.common
+        ? List.of(season.participantIds)
+        : [expense.paidBy];
+    store.upsertSeason(season);
   }
 }

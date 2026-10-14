@@ -58,6 +58,12 @@ class Participant {
 
   String get fullName => '$nume $prenume'.trim();
 
+  /// Numele scurt pentru decontare: numele de familie + inițiala, ex. „Pop S.”.
+  String get shortName {
+    final p = prenume.trim();
+    return p.isEmpty ? nume.trim() : '${nume.trim()} ${p[0].toUpperCase()}.';
+  }
+
   /// Câmpurile obligatorii pe permise.ddbra.ro care lipsesc.
   List<String> missingFields({bool needsCnp = false, bool needsPhone = false}) {
     return [

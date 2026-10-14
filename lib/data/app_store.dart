@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -40,6 +41,18 @@ class AppStore extends ChangeNotifier {
   /// Vremea zilnică colectată: locație (`Place.key`) → zi (`yyyy-MM-dd`).
   final Map<String, Map<String, WeatherDay>> weatherLog = {};
   bool collectingWeather = false;
+
+  /// Tema aleasă din aplicație (implicit după sistem).
+  ThemeMode get themeMode => switch (_box.get('themeMode')) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
+
+  Future<void> setThemeMode(ThemeMode m) async {
+    await _box.put('themeMode', m.name);
+    notifyListeners();
+  }
 
   /// Ultimul participant care a plătit (implicit la cheltuiala rapidă).
   String? get lastPayerId => _box.get('lastPayerId') as String?;

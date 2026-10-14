@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import 'home_shell.dart';
 import '../models/season.dart';
 import '../services/permit_catalog.dart';
 import 'backup_screen.dart';
@@ -56,6 +57,19 @@ class SeasonsScreen extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: 'Luminos / Dark',
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            onPressed: () => store.setThemeMode(
+              Theme.of(context).brightness == Brightness.dark
+                  ? ThemeMode.light
+                  : ThemeMode.dark,
+            ),
+          ),
+          IconButton(
             tooltip: 'Copie de siguranță',
             icon: const Icon(Icons.cloud_sync_outlined),
             onPressed: () => Navigator.push(
@@ -65,13 +79,15 @@ class SeasonsScreen extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showSeasonEditor(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Sezon'),
+      floatingActionButton: aboveBanner(
+        FloatingActionButton.extended(
+          onPressed: () => showSeasonEditor(context),
+          icon: const Icon(Icons.add),
+          label: const Text('Sezon'),
+        ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 96 + kBannerSpace),
         children: [
           Row(
             children: [

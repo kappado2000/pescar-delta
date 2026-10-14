@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import 'home_shell.dart';
 import '../models/catch_entry.dart';
 import '../models/spot.dart';
 import '../services/location_service.dart';
@@ -50,30 +51,32 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'me',
-            tooltip: 'Poziția mea',
-            onPressed: _goToMe,
-            child: const Icon(Icons.my_location),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'mark',
-            onPressed: _locating ? null : _markHere,
-            icon: _locating
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_location_alt),
-            label: const Text('Marchează locul'),
-          ),
-        ],
+      floatingActionButton: aboveBanner(
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'me',
+              tooltip: 'Poziția mea',
+              onPressed: _goToMe,
+              child: const Icon(Icons.my_location),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.extended(
+              heroTag: 'mark',
+              onPressed: _locating ? null : _markHere,
+              icon: _locating
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_location_alt),
+              label: const Text('Marchează locul'),
+            ),
+          ],
+        ),
       ),
       body: Stack(
         children: [

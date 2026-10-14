@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import 'home_shell.dart';
 import '../models/catch_entry.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
@@ -40,10 +41,12 @@ class _CatchesScreenState extends State<CatchesScreen> {
             : '${store.catches.length} capturi · '
                   '${store.catches.fold<double>(0, (s, c) => s + (c.weightKg ?? 0)).toStringAsFixed(1)} kg',
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => openCatchEditor(context),
-        icon: const Icon(Icons.add_a_photo_outlined),
-        label: const Text('Captură'),
+      floatingActionButton: aboveBanner(
+        FloatingActionButton.extended(
+          onPressed: () => openCatchEditor(context),
+          icon: const Icon(Icons.add_a_photo_outlined),
+          label: const Text('Captură'),
+        ),
       ),
       body: Column(
         children: [
@@ -80,7 +83,12 @@ class _CatchesScreenState extends State<CatchesScreen> {
                     child: Text('Nicio captură încă. Fir întins! 🎣'),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
+                    padding: const EdgeInsets.fromLTRB(
+                      12,
+                      0,
+                      12,
+                      96 + kBannerSpace,
+                    ),
                     itemCount: list.length,
                     itemBuilder: (_, i) => _CatchCard(entry: list[i]),
                   ),

@@ -11,6 +11,28 @@ import '../data/app_store.dart';
 import '../services/download/download.dart';
 import '../theme.dart';
 
+/// Exportă toate datele într-un fișier .json: în browser îl descarcă,
+/// pe telefon deschide meniul de partajare. Întoarce numele fișierului.
+Future<String> exportBackupFile(AppStore store) async {
+  final data = await store.exportData();
+  final bytes = Uint8List.fromList(utf8.encode(jsonEncode(data)));
+  final name =
+      'PescarDelta_copie_${DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now())}.json';
+  if (kIsWeb) {
+    await downloadFile(bytes, name, 'application/json');
+  } else {
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile.fromData(bytes, name: name, mimeType: 'application/json'),
+        ],
+        fileNameOverrides: [name],
+      ),
+    );
+  }
+  return name;
+}
+
 /// Copie de siguranță: toate datele într-un fișier, ca să le muți pe alt
 /// dispozitiv (ex. din previzualizarea de pe calculator pe telefon).
 class BackupScreen extends StatefulWidget {
@@ -28,22 +50,9 @@ class _BackupScreenState extends State<BackupScreen> {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
-      final data = await store.exportData();
-      final bytes = Uint8List.fromList(utf8.encode(jsonEncode(data)));
-      final name =
-          'PescarDelta_copie_${DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now())}.json';
+      final name = await exportBackupFile(store);
       if (kIsWeb) {
-        await downloadFile(bytes, name, 'application/json');
         messenger.showSnackBar(SnackBar(content: Text('Descărcat: $name')));
-      } else {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [
-              XFile.fromData(bytes, name: name, mimeType: 'application/json'),
-            ],
-            fileNameOverrides: [name],
-          ),
-        );
       }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Export eșuat: $e')));

@@ -1,10 +1,25 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../data/app_store.dart';
+import 'backup_screen.dart';
 
 import 'catches_screen.dart';
 import 'map_screen.dart';
 import 'seasons_screen.dart';
 import 'stats_screen.dart';
 import 'weather_screen.dart';
+
+/// Cât ocupă bannerul de jos (înălțime + margine) peste conținut: butoanele
+/// și finalul listelor de pe ecranele principale se ridică cu atât.
+const kBannerSpace = 84.0;
+
+/// Ridică un buton plutitor deasupra bannerului de jos.
+Widget aboveBanner(Widget fab) => Padding(
+  padding: const EdgeInsets.only(bottom: kBannerSpace),
+  child: fab,
+);
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -15,6 +30,22 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // previzualizarea de pe calculator deschisă cu ?export=1 salvează singură
+    // o copie de siguranță (descărcată direct în iCloud Drive)
+    if (kIsWeb && Uri.base.queryParameters['export'] == '1') {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final name = await exportBackupFile(context.read<AppStore>());
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Copie salvată: $name')));
+        }
+      });
+    }
+  }
 
   static const _pages = [
     SeasonsScreen(),

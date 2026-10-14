@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
+import 'home_shell.dart';
 import '../models/place.dart';
 import '../models/season.dart';
 import '../models/weather_day.dart';
@@ -167,7 +168,7 @@ class _ForecastView extends StatelessWidget {
         : 'în creștere (+${trend.toStringAsFixed(1)} hPa în 3 ore)';
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
       children: [
         // ---------- acum ----------
         Card(
@@ -572,7 +573,7 @@ class _HistoryViewState extends State<_HistoryView> {
         }
       },
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
         children: [
           DropdownButtonFormField<String>(
             initialValue: season.id,

@@ -18,224 +18,71 @@ import 'expenses_screen.dart';
 import 'need_categories_screen.dart';
 import 'needs_screen.dart';
 import 'permit_buy_screen.dart';
+import 'boats_screen.dart';
+import 'participants_screen.dart';
 import 'seasons_screen.dart';
 
 class SeasonDetailScreen extends StatelessWidget {
-  const SeasonDetailScreen({super.key, required this.seasonId});
+  const SeasonDetailScreen({
+    super.key,
+    required this.seasonId,
+    this.initialTab = 0,
+  });
   final String seasonId;
+
+  /// 0 Rezumat · 1 Echipa · 2 Permise · 3 Necesar · 4 Cheltuieli
+  final int initialTab;
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final season = store.season(seasonId);
     if (season == null) return const Scaffold();
-    final tasks = buildPermitTasks(
-      season: season,
-      participants: store.participants,
-      boats: store.boats,
-    );
-    final pending = tasks
-        .where((t) => season.purchased[t.key] != true)
-        .toList();
-    final fmt = DateFormat('d MMMM yyyy');
-    final text = Theme.of(context).textTheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(season.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_calendar_outlined),
-            onPressed: () => showSeasonEditor(context, season: season),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, season),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        children: [
-          if (season.archived)
-            Card(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              child: const ListTile(
-                leading: Icon(Icons.inventory_2_outlined),
-                title: Text('Sezon arhivat'),
-                subtitle: Text(
-                  'Anul s-a încheiat — datele rămân pentru consultare.',
-                ),
-              ),
+    return DefaultTabController(
+      length: 5,
+      initialIndex: initialTab.clamp(0, 4),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${season.title} · ${season.place.name}'),
+          actions: [
+            IconButton(
+              tooltip: 'Modifică sezonul',
+              icon: const Icon(Icons.edit_calendar_outlined),
+              onPressed: () => showSeasonEditor(context, season: season),
             ),
-          Text(
-            '📍 ${season.place.name} · '
-            '${fmt.format(season.start)} – ${fmt.format(season.end)}',
-          ),
-          const SizedBox(height: 12),
-          _NeedsCard(season: season),
-          _ExpensesCard(season: season),
-          const SizedBox(height: 16),
-
-          // ---------- Participanți ----------
-          Text('Participanți', style: text.titleMedium),
-          const SizedBox(height: 4),
-          if (store.participants.isEmpty)
-            const Text(
-              'Adaugă participanți din ecranul principal (iconița 👥).',
-            ),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final p in store.participants)
-                FilterChip(
-                  label: Text(p.fullName),
-                  avatar: p.category.freeAccess
-                      ? const Icon(Icons.elderly, size: 18)
-                      : null,
-                  selected: season.participantIds.contains(p.id),
-                  onSelected: (v) {
-                    v
-                        ? season.participantIds.add(p.id)
-                        : season.participantIds.remove(p.id);
-                    store.upsertSeason(season);
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text('Bărci', style: text.titleMedium),
-          const SizedBox(height: 4),
-          if (store.boats.isEmpty)
-            const Text(
-              'Nicio barcă — adaug-o din ecranul principal (iconița 🚤).',
-            ),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final b in store.boats)
-                FilterChip(
-                  label: Text(b.denumire),
-                  selected: season.boatIds.contains(b.id),
-                  onSelected: (v) {
-                    v ? season.boatIds.add(b.id) : season.boatIds.remove(b.id);
-                    store.upsertSeason(season);
-                  },
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ---------- Perioada permiselor ----------
-          Card(
-            color: season.permitStart == null
-                ? Theme.of(context).colorScheme.errorContainer
-                : null,
-            child: ListTile(
-              leading: const Icon(Icons.event_available),
-              title: const Text('Ziua de început a permiselor'),
-              subtitle: Text(
-                season.permitStart == null
-                    ? 'Apasă și scrie ziua (ex. 15.05.${season.year})'
-                    : fmt.format(season.permitStart!),
-              ),
-              trailing: const Icon(Icons.keyboard_outlined),
-              onTap: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  initialEntryMode: DatePickerEntryMode.input,
-                  initialDate: season.permitStart ?? DateTime.now(),
-                  firstDate: DateTime(season.year, 1, 1),
-                  lastDate: DateTime(season.year, 12, 31),
-                  helpText: 'Ziua de început a permiselor',
-                  fieldHintText: 'zz.ll.aaaa',
-                );
-                if (d == null) return;
-                season.permitStart = d;
-                await store.upsertSeason(season);
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          // ---------- Durate ----------
-          Text('Permis acces turist (plătit)', style: text.titleSmall),
-          const SizedBox(height: 6),
-          SegmentedButton<AccessDuration>(
-            segments: [
-              for (final d in AccessDuration.values)
-                ButtonSegment(
-                  value: d,
-                  label: Text(d.label, textAlign: TextAlign.center),
-                ),
-            ],
-            selected: {season.accessDuration},
-            onSelectionChanged: (v) {
-              season.accessDuration = v.first;
-              store.upsertSeason(season);
-            },
-          ),
-          if (season.boatIds.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text('Permis ambarcațiune', style: text.titleSmall),
-            const SizedBox(height: 6),
-            SegmentedButton<BoatDuration>(
-              segments: [
-                for (final d in BoatDuration.values)
-                  ButtonSegment(value: d, label: Text(d.label)),
-              ],
-              selected: {season.boatDuration},
-              onSelectionChanged: (v) {
-                season.boatDuration = v.first;
-                store.upsertSeason(season);
-              },
+            IconButton(
+              tooltip: 'Șterge sezonul',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _delete(context, season),
             ),
           ],
-          const SizedBox(height: 20),
-
-          // ---------- Permise ----------
-          Row(
-            children: [
-              Expanded(child: Text('Permise ARBDD', style: text.titleMedium)),
-              Text('${tasks.length - pending.length}/${tasks.length}'),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              Tab(icon: Icon(Icons.dashboard_outlined), text: 'Rezumat'),
+              Tab(icon: Icon(Icons.groups_outlined), text: 'Echipa'),
+              Tab(icon: Icon(Icons.badge_outlined), text: 'Permise'),
+              Tab(icon: Icon(Icons.checklist), text: 'Necesar'),
+              Tab(icon: Icon(Icons.payments_outlined), text: 'Cheltuieli'),
             ],
           ),
-          const SizedBox(height: 8),
-          if (pending.isNotEmpty && !season.archived)
-            FilledButton.icon(
-              icon: const Icon(Icons.auto_fix_high),
-              label: Text('Completează automat (${pending.length} rămase)'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PermitBuyScreen(seasonId: season.id),
-                ),
-              ),
+        ),
+        body: TabBarView(
+          children: [
+            _SummaryTab(season: season),
+            _TeamTab(season: season),
+            _PermitsTab(season: season),
+            ListView(
+              padding: const EdgeInsets.all(12),
+              children: [_NeedsCard(season: season, expanded: true)],
             ),
-          for (final t in tasks) _TaskTile(season: season, task: t),
-          // bărci introduse, dar nebifate în sezon → fără permis
-          for (final b in store.boats.where(
-            (b) => !season.boatIds.contains(b.id),
-          ))
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: ListTile(
-                leading: const Icon(Icons.directions_boat_outlined),
-                title: Text('Barca „${b.denumire}” nu e bifată în sezon'),
-                subtitle: const Text('Nu are permis de ambarcațiune.'),
-                trailing: FilledButton(
-                  onPressed: () {
-                    season.boatIds.add(b.id);
-                    store.upsertSeason(season);
-                  },
-                  child: const Text('Bifează'),
-                ),
-              ),
+            ListView(
+              padding: const EdgeInsets.all(12),
+              children: [_ExpensesCard(season: season)],
             ),
-          const SizedBox(height: 20),
-
-          // ---------- Folderul permise ----------
-          _PermitFolder(season: season, tasks: tasks),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -267,11 +114,365 @@ class SeasonDetailScreen extends StatelessWidget {
   }
 }
 
+/// Rezumatul sezonului: ce e gata și ce mai e de făcut, cu salt la tab.
+class _SummaryTab extends StatelessWidget {
+  const _SummaryTab({required this.season});
+  final Season season;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final fmt = DateFormat('d MMMM yyyy');
+    final tasks = buildPermitTasks(
+      season: season,
+      participants: store.participants,
+      boats: store.boats,
+    );
+    final bought = tasks.where((t) => season.purchased[t.key] == true).length;
+    final needs = [
+      for (final c in store.needCategories)
+        ...season.needsOf(c).where((i) => i.text.trim().isNotEmpty),
+    ];
+    final needsDone = needs.where((i) => i.done).length;
+    final spent = season.expenses.fold<double>(0, (s, e) => s + e.amount);
+    final catches = store.catches
+        .where((c) => season.contains(c.date))
+        .toList();
+    final kg = catches.fold<double>(0, (s, c) => s + (c.weightKg ?? 0));
+    void go(int tab) => DefaultTabController.of(context).animateTo(tab);
+
+    Widget tile(
+      IconData icon,
+      Color color,
+      String title,
+      String value,
+      String sub,
+      VoidCallback onTap,
+    ) {
+      return Card(
+        child: ListTile(
+          onTap: onTap,
+          leading: CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.15),
+            child: Icon(icon, color: color),
+          ),
+          title: Text(title),
+          subtitle: Text(sub),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: color,
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        if (season.archived)
+          Card(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: const ListTile(
+              leading: Icon(Icons.inventory_2_outlined),
+              title: Text('Sezon arhivat'),
+              subtitle: Text(
+                'Anul s-a încheiat — datele rămân pentru consultare.',
+              ),
+            ),
+          ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.place, color: Sea.ocean),
+            title: Text(season.place.name),
+            subtitle: Text(
+              '${fmt.format(season.start)} – ${fmt.format(season.end)}'
+              '${season.permitStart != null ? '\nPermisele încep din ${fmt.format(season.permitStart!)}' : ''}',
+            ),
+            isThreeLine: season.permitStart != null,
+          ),
+        ),
+        tile(
+          Icons.groups_outlined,
+          Sea.deep,
+          'Echipa',
+          '${season.participantIds.length} + ${season.boatIds.length}',
+          '${season.participantIds.length} participanți · ${season.boatIds.length} bărci',
+          () => go(1),
+        ),
+        tile(
+          Icons.badge_outlined,
+          bought == tasks.length && tasks.isNotEmpty ? Sea.good : Sea.ocean,
+          'Permise ARBDD',
+          '$bought/${tasks.length}',
+          tasks.isEmpty
+              ? 'Bifează participanții în Echipa'
+              : bought == tasks.length
+              ? 'Toate cumpărate'
+              : '${tasks.length - bought} de cumpărat',
+          () => go(2),
+        ),
+        tile(
+          Icons.checklist,
+          Sea.sunset,
+          'Necesar',
+          '$needsDone/${needs.length}',
+          needs.isEmpty ? 'Nimic notat încă' : 'bifate',
+          () => go(3),
+        ),
+        tile(
+          Icons.payments_outlined,
+          Sea.teal,
+          'Cheltuieli',
+          lei(spent),
+          '${season.expenses.length} cheltuieli',
+          () => go(4),
+        ),
+        tile(
+          Icons.set_meal,
+          Sea.coral,
+          'Capturi',
+          '${catches.length}',
+          '${kg.toStringAsFixed(1)} kg în perioada sezonului',
+          () {},
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          icon: const Icon(Icons.add),
+          label: const Text('Cheltuială rapidă'),
+          onPressed: () => showQuickExpense(context, season),
+        ),
+      ],
+    );
+  }
+}
+
+/// Cine merge în sezon: participanții și bărcile bifate.
+class _TeamTab extends StatelessWidget {
+  const _TeamTab({required this.season});
+  final Season season;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('Participanți', style: text.titleMedium)),
+            TextButton.icon(
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Gestionează'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ParticipantsScreen()),
+              ),
+            ),
+          ],
+        ),
+        if (store.participants.isEmpty)
+          const Text('Niciun participant — apasă „Gestionează”.'),
+        for (final p in store.participants)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: season.participantIds.contains(p.id),
+            title: Text(p.fullName),
+            subtitle: Text(p.category.label),
+            secondary: Icon(
+              p.category.freeAccess ? Icons.elderly : Icons.person_outline,
+            ),
+            onChanged: (v) {
+              v == true
+                  ? season.participantIds.add(p.id)
+                  : season.participantIds.remove(p.id);
+              store.upsertSeason(season);
+            },
+          ),
+        const Divider(height: 32),
+        Row(
+          children: [
+            Expanded(child: Text('Bărci', style: text.titleMedium)),
+            TextButton.icon(
+              icon: const Icon(Icons.directions_boat_outlined),
+              label: const Text('Gestionează'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BoatsScreen()),
+              ),
+            ),
+          ],
+        ),
+        if (store.boats.isEmpty)
+          const Text('Nicio barcă — apasă „Gestionează”.'),
+        for (final b in store.boats)
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: season.boatIds.contains(b.id),
+            title: Text(b.denumire),
+            subtitle: Text(
+              [
+                b.tip,
+                if (b.capacitateMotor.isNotEmpty) b.capacitateMotor,
+              ].join(' · '),
+            ),
+            secondary: const Icon(Icons.directions_boat),
+            onChanged: (v) {
+              v == true
+                  ? season.boatIds.add(b.id)
+                  : season.boatIds.remove(b.id);
+              store.upsertSeason(season);
+            },
+          ),
+      ],
+    );
+  }
+}
+
+/// Permisele: ziua de început, durate, lista ARBDD, folderul „permise”.
+class _PermitsTab extends StatelessWidget {
+  const _PermitsTab({required this.season});
+  final Season season;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final fmt = DateFormat('d MMMM yyyy');
+    final text = Theme.of(context).textTheme;
+    final tasks = buildPermitTasks(
+      season: season,
+      participants: store.participants,
+      boats: store.boats,
+    );
+    final pending = tasks
+        .where((t) => season.purchased[t.key] != true)
+        .toList();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        Card(
+          color: season.permitStart == null
+              ? Theme.of(context).colorScheme.errorContainer
+              : null,
+          child: ListTile(
+            leading: const Icon(Icons.event_available),
+            title: const Text('Ziua de început a permiselor'),
+            subtitle: Text(
+              season.permitStart == null
+                  ? 'Apasă și scrie ziua (ex. 15.05.${season.year})'
+                  : fmt.format(season.permitStart!),
+            ),
+            trailing: const Icon(Icons.keyboard_outlined),
+            onTap: () async {
+              final d = await showDatePicker(
+                context: context,
+                initialEntryMode: DatePickerEntryMode.input,
+                initialDate: season.permitStart ?? DateTime.now(),
+                firstDate: DateTime(season.year, 1, 1),
+                lastDate: DateTime(season.year, 12, 31),
+                helpText: 'Ziua de început a permiselor',
+                fieldHintText: 'zz.ll.aaaa',
+              );
+              if (d == null) return;
+              season.permitStart = d;
+              await store.upsertSeason(season);
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text('Permis acces turist (plătit)', style: text.titleSmall),
+        const SizedBox(height: 6),
+        SegmentedButton<AccessDuration>(
+          segments: [
+            for (final d in AccessDuration.values)
+              ButtonSegment(
+                value: d,
+                label: Text(d.label, textAlign: TextAlign.center),
+              ),
+          ],
+          selected: {season.accessDuration},
+          onSelectionChanged: (v) {
+            season.accessDuration = v.first;
+            store.upsertSeason(season);
+          },
+        ),
+        if (season.boatIds.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text('Permis ambarcațiune', style: text.titleSmall),
+          const SizedBox(height: 6),
+          SegmentedButton<BoatDuration>(
+            segments: [
+              for (final d in BoatDuration.values)
+                ButtonSegment(value: d, label: Text(d.label)),
+            ],
+            selected: {season.boatDuration},
+            onSelectionChanged: (v) {
+              season.boatDuration = v.first;
+              store.upsertSeason(season);
+            },
+          ),
+        ],
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(child: Text('Permise ARBDD', style: text.titleMedium)),
+            Text('${tasks.length - pending.length}/${tasks.length}'),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (pending.isNotEmpty && !season.archived)
+          FilledButton.icon(
+            icon: const Icon(Icons.auto_fix_high),
+            label: Text('Completează automat (${pending.length} rămase)'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PermitBuyScreen(seasonId: season.id),
+              ),
+            ),
+          ),
+        for (final t in tasks) _TaskTile(season: season, task: t),
+        for (final b in store.boats.where(
+          (b) => !season.boatIds.contains(b.id),
+        ))
+          Card(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: ListTile(
+              leading: const Icon(Icons.directions_boat_outlined),
+              title: Text('Barca „${b.denumire}” nu e bifată în sezon'),
+              subtitle: const Text('Nu are permis de ambarcațiune.'),
+              trailing: FilledButton(
+                onPressed: () {
+                  season.boatIds.add(b.id);
+                  store.upsertSeason(season);
+                },
+                child: const Text('Bifează'),
+              ),
+            ),
+          ),
+        const SizedBox(height: 20),
+        _PermitFolder(season: season, tasks: tasks),
+      ],
+    );
+  }
+}
+
 /// „Necesar”: apeși și se deschide în jos cu toate categoriile; fiecare
 /// categorie se deschide la rândul ei cu nevoile, care se bifează pe loc.
 class _NeedsCard extends StatelessWidget {
-  const _NeedsCard({required this.season});
+  const _NeedsCard({required this.season, this.expanded = false});
   final Season season;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +499,7 @@ class _NeedsCard extends StatelessWidget {
       color: Sea.sunset.withValues(alpha: 0.12),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
+        initiallyExpanded: expanded,
         leading: const Icon(Icons.checklist, color: Sea.sunset, size: 32),
         title: const Text('Necesar pentru sezon'),
         subtitle: Text(

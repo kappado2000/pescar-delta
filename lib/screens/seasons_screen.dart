@@ -3,27 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
-import 'home_shell.dart';
 import '../models/season.dart';
 import '../services/permit_catalog.dart';
-import 'backup_screen.dart';
-import 'boats_screen.dart';
-import 'participants_screen.dart';
 import 'season_detail_screen.dart';
 import '../theme.dart';
 import '../models/place.dart';
-import '../widgets/delta_scene.dart';
 import '../widgets/place_picker.dart';
 
 final _dayMonth = DateFormat('d MMM');
-
-String _greeting() {
-  final h = DateTime.now().hour;
-  if (h >= 5 && h < 11) return 'Bună dimineața, fir întins!';
-  if (h >= 11 && h < 18) return 'Bună ziua, fir întins!';
-  if (h >= 18 && h < 22) return 'Bună seara, fir întins!';
-  return 'Noapte bună, pescarule!';
-}
 
 class SeasonsScreen extends StatelessWidget {
   const SeasonsScreen({super.key});
@@ -34,89 +21,15 @@ class SeasonsScreen extends StatelessWidget {
     final active = store.activeSeasons;
     final history = store.seasonsByYear;
     return Scaffold(
-      appBar: SceneAppBar(
-        title: 'Pescar Deltă',
-        subtitle:
-            '${_greeting()} · ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
-        height: 170,
-        actions: [
-          IconButton(
-            tooltip: 'Participanți',
-            icon: const Icon(Icons.people_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ParticipantsScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Bărci',
-            icon: const Icon(Icons.directions_boat_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BoatsScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Luminos / Dark',
-            icon: Icon(
-              Theme.of(context).brightness == Brightness.dark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-            ),
-            onPressed: () => store.setThemeMode(
-              Theme.of(context).brightness == Brightness.dark
-                  ? ThemeMode.light
-                  : ThemeMode.dark,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Copie de siguranță',
-            icon: const Icon(Icons.cloud_sync_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BackupScreen()),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: aboveBanner(
-        FloatingActionButton.extended(
-          onPressed: () => showSeasonEditor(context),
-          icon: const Icon(Icons.add),
-          label: const Text('Sezon'),
-        ),
+      appBar: AppBar(title: const Text('Sezoane și istoric')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showSeasonEditor(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Sezon'),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 96 + kBannerSpace),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _QuickCard(
-                  icon: Icons.people_outline,
-                  title: 'Participanți',
-                  subtitle: '${store.participants.length} · date și acte',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ParticipantsScreen(),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _QuickCard(
-                  icon: Icons.directions_boat_outlined,
-                  title: 'Bărci',
-                  subtitle: '${store.boats.length} · motor și acte',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const BoatsScreen()),
-                  ),
-                ),
-              ),
-            ],
-          ),
           if (active.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24),
@@ -164,51 +77,6 @@ class SeasonsScreen extends StatelessWidget {
               ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _QuickCard extends StatelessWidget {
-  const _QuickCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(icon, size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

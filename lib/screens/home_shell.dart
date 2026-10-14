@@ -7,7 +7,7 @@ import 'backup_screen.dart';
 
 import 'catches_screen.dart';
 import 'map_screen.dart';
-import 'seasons_screen.dart';
+import 'home_screen.dart';
 import 'stats_screen.dart';
 import 'weather_screen.dart';
 
@@ -48,7 +48,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   static const _pages = [
-    SeasonsScreen(),
+    HomeScreen(),
     CatchesScreen(),
     MapScreen(),
     WeatherScreen(),
@@ -87,9 +87,9 @@ class _HomeShellState extends State<HomeShell> {
               onDestinationSelected: (i) => setState(() => _index = i),
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(Icons.event_note_outlined),
-                  selectedIcon: Icon(Icons.event_note),
-                  label: 'Sezoane',
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Acasă',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.set_meal_outlined),

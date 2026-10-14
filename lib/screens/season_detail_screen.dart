@@ -10,6 +10,9 @@ import '../data/app_store.dart';
 import '../models/permit_file.dart';
 import '../models/season.dart';
 import '../services/permit_catalog.dart';
+import '../models/need_item.dart';
+import '../theme.dart';
+import 'needs_screen.dart';
 import 'permit_buy_screen.dart';
 import 'seasons_screen.dart';
 
@@ -65,6 +68,8 @@ class SeasonDetailScreen extends StatelessWidget {
             '📍 ${season.place.name} · '
             '${fmt.format(season.start)} – ${fmt.format(season.end)}',
           ),
+          const SizedBox(height: 12),
+          _NeedsCard(season: season),
           const SizedBox(height: 16),
 
           // ---------- Participanți ----------
@@ -235,6 +240,42 @@ class SeasonDetailScreen extends StatelessWidget {
     if (ok != true || !context.mounted) return;
     Navigator.pop(context);
     await context.read<AppStore>().deleteSeason(s.id);
+  }
+}
+
+class _NeedsCard extends StatelessWidget {
+  const _NeedsCard({required this.season});
+  final Season season;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      for (final c in NeedCategory.values)
+        ...season.needsOf(c).where((i) => i.text.trim().isNotEmpty),
+    ];
+    final done = items.where((i) => i.done).length;
+    final problems = season
+        .needsOf(NeedCategory.probleme)
+        .where((i) => i.text.trim().isNotEmpty && !i.done)
+        .length;
+    return Card(
+      color: Sea.sunset.withValues(alpha: 0.12),
+      child: ListTile(
+        leading: const Icon(Icons.checklist, color: Sea.sunset, size: 32),
+        title: const Text('Necesar pentru sezon'),
+        subtitle: Text(
+          items.isEmpty
+              ? 'Echipament, ținută, barcă, momeli, mâncare, alte nevoi, probleme'
+              : '$done/${items.length} bifate'
+                    '${problems > 0 ? ' · $problems probleme de remediat' : ''}',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => NeedsScreen(seasonId: season.id)),
+        ),
+      ),
+    );
   }
 }
 

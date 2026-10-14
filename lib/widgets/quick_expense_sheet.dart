@@ -113,13 +113,9 @@ class _QuickExpenseState extends State<_QuickExpense> {
     setState(() {
       _preset = p;
       _common = p.common;
-      _amount = p.amount == null ? '' : _fmt(p.amount!);
+      _amount = '';
     });
   }
-
-  String _fmt(double v) => v == v.roundToDouble()
-      ? v.toStringAsFixed(0)
-      : v.toStringAsFixed(2).replaceAll('.', ',');
 
   double get _value => double.tryParse(_amount.replaceAll(',', '.')) ?? 0;
 

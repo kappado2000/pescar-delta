@@ -963,7 +963,6 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
       if (_common && _shared.isEmpty) {
         _shared.addAll(widget.season.participantIds);
       }
-      if (p.amount != null) _amount.text = amountText(p.amount!);
     }
 
     rebuild ? setState(apply) : apply();
@@ -1137,11 +1136,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
                 for (final p in store.expensePresets)
                   ChoiceChip(
                     avatar: Icon(expenseIcon(p.category, p.name), size: 18),
-                    label: Text(
-                      p.amount == null
-                          ? p.name
-                          : '${p.name} · ${lei(p.amount!)}',
-                    ),
+                    label: Text(p.name),
                     selected: _presetId == p.id,
                     onSelected: (_) => _applyPreset(p),
                   ),

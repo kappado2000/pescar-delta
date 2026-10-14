@@ -71,6 +71,13 @@ class AppStore extends ChangeNotifier {
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);
     _load('expensePresets', expensePresets, ExpensePreset.fromJson);
+    // presetările nu mai au sumă: o scrii la fiecare cheltuială
+    if (expensePresets.any((p) => p.amount != null)) {
+      for (final p in expensePresets) {
+        p.amount = null;
+      }
+      await _save('expensePresets', expensePresets);
+    }
     _load('needCategories', needCategories, NeedCategory.fromJson);
     if (needCategories.isEmpty) {
       needCategories.addAll(NeedCategory.defaults());

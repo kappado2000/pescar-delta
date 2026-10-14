@@ -5,7 +5,6 @@ import '../data/app_store.dart';
 import '../models/expense.dart';
 import '../theme.dart';
 import '../widgets/quick_expense_sheet.dart';
-import 'expenses_screen.dart';
 
 /// Bunurile pentru care se fac des cheltuieli (comune sau personale).
 class ExpensePresetsScreen extends StatelessWidget {
@@ -43,7 +42,7 @@ class ExpensePresetsScreen extends StatelessWidget {
                       title: Text(p.name),
                       subtitle: Text(
                         '${p.category} · ${p.common ? 'comună' : 'personală'}'
-                        '${p.amount != null ? ' · ${lei(p.amount!)}' : ''}',
+                        '',
                       ),
                       trailing: const Icon(Icons.edit_outlined),
                       onTap: () => editPreset(context, p),
@@ -58,9 +57,6 @@ class ExpensePresetsScreen extends StatelessWidget {
 Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
   final store = context.read<AppStore>();
   final name = TextEditingController(text: preset?.name ?? '');
-  final amount = TextEditingController(
-    text: preset?.amount == null ? '' : amountText(preset!.amount!),
-  );
   var category = preset?.category ?? 'Altele';
   var common = preset?.common ?? true;
   await showDialog(
@@ -91,17 +87,6 @@ Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
               ],
               onChanged: (v) => setState(() => category = v!),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: amount,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Suma obișnuită (opțional)',
-                suffixText: 'lei',
-              ),
-            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: common,
@@ -131,7 +116,7 @@ Future<void> editPreset(BuildContext context, ExpensePreset? preset) async {
                 ..name = name.text.trim()
                 ..category = category
                 ..common = common
-                ..amount = double.tryParse(amount.text.replaceAll(',', '.'));
+                ..amount = null;
               await store.upsertPreset(p);
               if (c.mounted) Navigator.pop(c);
             },

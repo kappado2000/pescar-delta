@@ -113,6 +113,36 @@ class SettingsScreen extends StatelessWidget {
               const ExpensePresetsScreen(),
             ),
           ]),
+          section('Capturi', [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: DropdownButtonFormField<String?>(
+                initialValue:
+                    store.participants.any(
+                      (p) => p.id == store.defaultCatcherId,
+                    )
+                    ? store.defaultCatcherId
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Pescar implicit',
+                  helperText:
+                      'Primul la „Cine a prins” și ales din start '
+                      'la o captură nouă',
+                  prefixIcon: Icon(Icons.phishing),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Ultimul care a prins'),
+                  ),
+                  for (final p in store.participants)
+                    DropdownMenuItem(value: p.id, child: Text(p.fullName)),
+                ],
+                onChanged: store.setDefaultCatcher,
+              ),
+            ),
+          ]),
           section('Cheltuieli', [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),

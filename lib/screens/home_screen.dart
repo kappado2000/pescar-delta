@@ -9,6 +9,7 @@ import '../services/location_service.dart';
 import '../services/permit_catalog.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/thermo.dart';
 import '../widgets/delta_scene.dart';
 import '../widgets/open_problems.dart';
 import '../widgets/quick_expense_sheet.dart';
@@ -311,9 +312,10 @@ class _SeasonHeader extends StatelessWidget {
                     TextSpan(
                       style: style,
                       children: [
+                        thermoSpan(),
                         TextSpan(
                           text:
-                              '🌡 ${f.current.temp.toStringAsFixed(0)}° · '
+                              ' ${f.current.temp.toStringAsFixed(0)}° · '
                               '${f.current.pressure.toStringAsFixed(0)} hPa · '
                               'vânt ${f.current.wind.toStringAsFixed(0)} km/h',
                         ),

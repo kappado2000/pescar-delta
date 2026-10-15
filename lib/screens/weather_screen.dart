@@ -11,6 +11,7 @@ import '../models/weather_day.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/thermo.dart';
 import '../widgets/delta_scene.dart';
 
 class WeatherScreen extends StatefulWidget {
@@ -409,10 +410,18 @@ class _DayDetail extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              Text(
-                '🌡 ${day.tMin.toStringAsFixed(0)}° / ${day.tMax.toStringAsFixed(0)}°   '
-                '💨 max ${day.windMax.toStringAsFixed(0)} km/h   '
-                '💧 ${day.precip.toStringAsFixed(1)} mm',
+              Text.rich(
+                TextSpan(
+                  children: [
+                    thermoSpan(),
+                    TextSpan(
+                      text:
+                          ' ${day.tMin.toStringAsFixed(0)}° / ${day.tMax.toStringAsFixed(0)}°   '
+                          '💨 max ${day.windMax.toStringAsFixed(0)} km/h   '
+                          '💧 ${day.precip.toStringAsFixed(1)} mm',
+                    ),
+                  ],
+                ),
               ),
               Text(
                 'Presiune ${dp.abs() < 3

@@ -178,3 +178,34 @@ class Season {
     ],
   );
 }
+
+/// Problemele de remediat nebifate din sezoanele care au început înaintea
+/// lui [season] (fără cele scrise din nou în [season]); cele mai noi primele.
+List<(Season, NeedItem)> openProblems(
+  List<Season> seasons,
+  List<NeedCategory> categories,
+  Season season,
+) {
+  final cats = categories.where((c) => c.isProblems).toList();
+  if (cats.isEmpty) return const [];
+  final here = {
+    for (final c in cats)
+      for (final i in season.needsOf(c)) i.text.trim().toLowerCase(),
+  };
+  final earlier =
+      seasons
+          .where((s) => s.id != season.id && s.start.isBefore(season.start))
+          .toList()
+        ..sort((a, b) => b.start.compareTo(a.start));
+  final seen = <String>{};
+  return [
+    for (final s in earlier)
+      for (final c in cats)
+        for (final i in s.needsOf(c))
+          if (!i.done &&
+              i.text.trim().isNotEmpty &&
+              !here.contains(i.text.trim().toLowerCase()) &&
+              seen.add(i.text.trim().toLowerCase()))
+            (s, i),
+  ];
+}

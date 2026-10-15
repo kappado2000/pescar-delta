@@ -13,6 +13,7 @@ import '../services/permit_catalog.dart';
 import '../models/need_item.dart';
 import '../theme.dart';
 import '../models/expense.dart';
+import '../widgets/open_problems.dart';
 import '../widgets/quick_expense_sheet.dart';
 import '../widgets/swipe_delete.dart';
 import 'expenses_screen.dart';
@@ -79,7 +80,10 @@ class SeasonDetailScreen extends StatelessWidget {
             _PermitsTab(season: season),
             ListView(
               padding: const EdgeInsets.all(12),
-              children: [_NeedsCard(season: season, expanded: true)],
+              children: [
+                OpenProblemsCard(season: season),
+                _NeedsCard(season: season, expanded: true),
+              ],
             ),
             ListView(
               padding: const EdgeInsets.all(12),
@@ -183,6 +187,7 @@ class _SummaryTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        OpenProblemsRow(season: season, onTap: () => go(3)),
         if (season.archived)
           Card(
             color: Theme.of(context).colorScheme.secondaryContainer,

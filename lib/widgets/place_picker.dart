@@ -8,6 +8,7 @@ import '../models/place.dart';
 /// Alegerea locației sezonului: localitățile din Deltă sau căutare după nume.
 Future<Place?> pickPlace(BuildContext context, {Place? current}) {
   return showModalBottomSheet<Place>(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (_) => _PlacePicker(current: current),

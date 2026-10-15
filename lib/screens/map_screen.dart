@@ -220,6 +220,7 @@ class _MapScreenState extends State<MapScreen> {
 
   void _spotList(BuildContext context, AppStore store) {
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       builder: (c) => store.spots.isEmpty
           ? const Padding(
@@ -254,6 +255,7 @@ class _MapScreenState extends State<MapScreen> {
       bySpecies[c.species] = (bySpecies[c.species] ?? 0) + 1;
     }
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       builder: (c) => Padding(
         padding: const EdgeInsets.all(16),

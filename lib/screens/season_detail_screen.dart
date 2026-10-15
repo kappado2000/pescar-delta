@@ -204,7 +204,7 @@ class _SummaryTab extends StatelessWidget {
             leading: const Icon(Icons.place, color: Sea.ocean),
             title: Text(season.place.name),
             subtitle: Text(
-              '${fmt.format(season.start)} – ${fmt.format(season.end)}'
+              '${season.periodLabel}'
               '${season.permitStart != null ? '\nPermisele încep din ${fmt.format(season.permitStart!)}' : ''}',
             ),
             isThreeLine: season.permitStart != null,

@@ -10,8 +10,6 @@ import '../theme.dart';
 import '../models/place.dart';
 import '../widgets/place_picker.dart';
 
-final _dayMonth = DateFormat('dd.MM.yyyy');
-
 class SeasonsScreen extends StatelessWidget {
   const SeasonsScreen({super.key});
 
@@ -153,7 +151,7 @@ class _SeasonCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '📍 ${season.place.name} · '
-                '${_dayMonth.format(season.start)} – ${_dayMonth.format(season.end)}'
+                '${season.periodLabel}'
                 ' · ${season.participantIds.length} participanți'
                 ' · $catches capturi',
               ),
@@ -199,7 +197,7 @@ class _SeasonTile extends StatelessWidget {
       ),
       title: Text('${season.kind.label} · ${season.place.name}'),
       subtitle: Text(
-        '${_dayMonth.format(season.start)} – ${_dayMonth.format(season.end)}'
+        '${season.periodLabel}'
         ' · ${season.participantIds.length} participanți\n'
         '${catches.length} capturi · ${kg.toStringAsFixed(1)} kg'
         '${spent > 0 ? ' · cheltuieli ${spent.toStringAsFixed(0)} lei' : ''}',

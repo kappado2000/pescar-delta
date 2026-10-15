@@ -310,8 +310,13 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
     if (widget.entry == null) {
       // implicit: ultimul care a prins, dacă e în echipă
       final store = context.read<AppStore>();
-      final last = store.lastCatcherId;
-      if (_anglers(store).any((p) => p.id == last)) _participantId = last;
+      final anglers = _anglers(store);
+      for (final id in [store.defaultCatcherId, store.lastCatcherId]) {
+        if (anglers.any((p) => p.id == id)) {
+          _participantId = id;
+          break;
+        }
+      }
       _applySpeciesDefaults();
       if (_lat == null && _spotId == null) _locate();
     }
@@ -323,7 +328,13 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
     final season = store.seasons.where((s) => s.contains(_date)).firstOrNull;
     final ids = {...?season?.participantIds, ?_participantId};
     final team = store.participants.where((p) => ids.contains(p.id)).toList();
-    return season == null || team.isEmpty ? store.participants : team;
+    final list = List.of(
+      season == null || team.isEmpty ? store.participants : team,
+    );
+    // pescarul implicit stă primul
+    final first = list.indexWhere((p) => p.id == store.defaultCatcherId);
+    if (first > 0) list.insert(0, list.removeAt(first));
+    return list;
   }
 
   /// Momeala și metoda implicite ale speciei (la o captură nouă).

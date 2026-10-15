@@ -62,6 +62,15 @@ class AppStore extends ChangeNotifier {
   String? get lastCatcherId => _box.get('lastCatcherId') as String?;
   set lastCatcherId(String? id) => _box.put('lastCatcherId', id);
 
+  /// Pescarul implicit ales în Setări: primul în „Cine a prins” și ales
+  /// din start la o captură nouă (null = ultimul care a prins).
+  String? get defaultCatcherId => _box.get('defaultCatcherId') as String?;
+
+  Future<void> setDefaultCatcher(String? id) async {
+    await _box.put('defaultCatcherId', id);
+    notifyListeners();
+  }
+
   /// Plătitorul implicit ales în Setări (null = ultimul care a plătit).
   String? get defaultPayerId => _box.get('defaultPayerId') as String?;
 

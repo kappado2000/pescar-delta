@@ -11,6 +11,7 @@ import '../models/participant.dart';
 import '../models/season.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/thermo.dart';
 import '../widgets/delta_scene.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -259,12 +260,20 @@ class _DailyStats extends StatelessWidget {
                   if (store.weatherOn(d) case final w?)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Text(
-                        '🌡 ${w.tMin.toStringAsFixed(0)}°/${w.tMax.toStringAsFixed(0)}°'
-                        '  ⏲ ${w.pAvg.toStringAsFixed(0)} hPa '
-                        '(${w.pChange >= 0 ? '+' : ''}${w.pChange.toStringAsFixed(1)})'
-                        '  💨 ${w.windMax.toStringAsFixed(0)} km/h ${windDirName(w.windDir)}'
-                        '${w.precip > 0.1 ? '  💧 ${w.precip.toStringAsFixed(1)} mm' : ''}',
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            thermoSpan(),
+                            TextSpan(
+                              text:
+                                  ' ${w.tMin.toStringAsFixed(0)}°/${w.tMax.toStringAsFixed(0)}°'
+                                  '  ⏲ ${w.pAvg.toStringAsFixed(0)} hPa '
+                                  '(${w.pChange >= 0 ? '+' : ''}${w.pChange.toStringAsFixed(1)})'
+                                  '  💨 ${w.windMax.toStringAsFixed(0)} km/h ${windDirName(w.windDir)}'
+                                  '${w.precip > 0.1 ? '  💧 ${w.precip.toStringAsFixed(1)} mm' : ''}',
+                            ),
+                          ],
+                        ),
                         style: text.bodySmall,
                       ),
                     ),

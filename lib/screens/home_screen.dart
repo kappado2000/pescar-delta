@@ -140,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     _Action(
                       icon: Icons.account_balance_wallet,
-                      label: 'Cheltuială',
+                      label: 'Cheltuială rapidă',
                       color: Sea.teal,
                       onTap: () => showQuickExpense(context, season),
                     ),

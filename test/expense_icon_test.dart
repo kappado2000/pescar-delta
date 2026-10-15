@@ -15,5 +15,9 @@ void main() {
       Icons.local_gas_station,
     );
     expect(expenseIcon('Altele', 'Farmacie'), Icons.local_pharmacy);
+    expect(expenseIcon('Echipament', 'Undițe'), Icons.phishing);
+    expect(expenseIcon('Echipament', 'Mulinete'), Icons.album);
+    expect(expenseIcon('Echipament', 'Umbrelă'), Icons.beach_access);
+    expect(expenseIcon('Echipament', 'Scaun de pescuit'), Icons.chair_alt);
   });
 }

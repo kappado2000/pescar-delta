@@ -16,7 +16,7 @@ enum SeasonKind {
 enum AccessDuration {
   zi1('1 zi'),
   zile7('7 zile'),
-  an('Până la finele anului');
+  an('Tot anul');
 
   const AccessDuration(this.label);
   final String label;

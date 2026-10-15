@@ -17,7 +17,7 @@ const kBannerSpace = 84.0;
 
 /// Ridică un buton plutitor deasupra bannerului de jos.
 Widget aboveBanner(Widget fab) => Padding(
-  padding: const EdgeInsets.only(bottom: kBannerSpace),
+  padding: const EdgeInsets.only(bottom: kBannerSpace + 14),
   child: fab,
 );
 

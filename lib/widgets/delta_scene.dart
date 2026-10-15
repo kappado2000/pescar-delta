@@ -377,10 +377,14 @@ class SceneAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.bottom,
     this.height = 132,
     this.time,
+    this.caption,
   });
 
   final String title;
   final String? subtitle;
+
+  /// Text în colțul din stânga jos al peisajului (ex. salutul).
+  final String? caption;
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
   final double height;
@@ -417,6 +421,23 @@ class SceneAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
           ),
+          if (caption != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 10 + (bottom?.preferredSize.height ?? 0),
+              child: Text(
+                caption!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  shadows: shadow,
+                ),
+              ),
+            ),
         ],
       ),
       titleSpacing: 16,

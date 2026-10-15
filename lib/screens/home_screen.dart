@@ -108,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: SceneAppBar(
         title: 'Pescar Deltă',
-        subtitle:
+        caption:
             '${_greeting()} · ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
         height: 150,
         actions: [

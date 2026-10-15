@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import 'home_shell.dart';
 import '../models/catch_entry.dart';
+import '../models/species_data.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
@@ -274,8 +275,8 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
   );
   late final _bait = TextEditingController(text: _c.bait);
 
-  /// Controller-ul creat de Autocomplete pentru câmpul de momeală.
-  TextEditingController? _baitField;
+  /// Greutatea scrisă de mână nu mai e înlocuită de estimarea din lungime.
+  late bool _weightManual = _c.weightKg != null;
   late final _notes = TextEditingController(text: _c.notes);
   late String _method = _c.method;
   late DateTime _date = _c.date;
@@ -292,7 +293,24 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
   void initState() {
     super.initState();
     if (!commonSpecies.contains(_species)) _species = 'Altă specie';
-    if (widget.entry == null && _lat == null && _spotId == null) _locate();
+    if (widget.entry == null) {
+      _applySpeciesDefaults();
+      if (_lat == null && _spotId == null) _locate();
+    }
+  }
+
+  /// Momeala și metoda implicite ale speciei (la o captură nouă).
+  void _applySpeciesDefaults() {
+    final baits = speciesBaits[_species];
+    if (baits != null) _bait.text = baits.$1;
+    final method = speciesMethod[_species];
+    if (method != null) _method = method;
+  }
+
+  void _estimateWeight() {
+    if (_weightManual) return;
+    final est = estimateWeightKg(_species, _parse(_length.text));
+    _weight.text = est == null ? '' : _num(est);
   }
 
   Future<void> _locate() async {
@@ -345,7 +363,11 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
               for (final s in commonSpecies)
                 DropdownMenuItem(value: s, child: Text(s)),
             ],
-            onChanged: (v) => setState(() => _species = v!),
+            onChanged: (v) => setState(() {
+              _species = v!;
+              if (widget.entry == null) _applySpeciesDefaults();
+              _estimateWeight();
+            }),
           ),
           if (_species == 'Altă specie') ...[
             const SizedBox(height: 12),
@@ -359,44 +381,64 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
             children: [
               Expanded(
                 child: TextField(
-                  controller: _weight,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(labelText: 'Greutate (kg)'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
                   controller: _length,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   decoration: const InputDecoration(labelText: 'Lungime (cm)'),
+                  onChanged: (_) => setState(_estimateWeight),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _weight,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Greutate (kg)',
+                    helperText: _weightManual
+                        ? 'scrisă manual'
+                        : hasWeightEstimate(_species)
+                        ? 'estimată din lungime'
+                        : null,
+                  ),
+                  onChanged: (v) => setState(() {
+                    // golit → revine estimarea din lungime
+                    _weightManual = v.trim().isNotEmpty;
+                    if (!_weightManual) _estimateWeight();
+                  }),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Autocomplete<String>(
-            initialValue: TextEditingValue(text: _bait.text),
-            optionsBuilder: (v) => baits.where(
-              (b) => b.toLowerCase().contains(v.text.toLowerCase()),
+          TextField(
+            controller: _bait,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Momeală / nadă / năluca',
+              helperText: 'Alege de mai jos sau scrie manual',
             ),
-            fieldViewBuilder: (context, controller, focus, onSubmit) {
-              _baitField = controller;
-              return TextField(
-                controller: controller,
-                focusNode: focus,
-                decoration: const InputDecoration(
-                  labelText: 'Momeală / nadă / năluca',
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final b in {...?speciesBaits[_species]?.$2, ...baits})
+                ChoiceChip(
+                  label: Text(b, style: const TextStyle(fontSize: 12)),
+                  visualDensity: VisualDensity.compact,
+                  selected: _bait.text.trim() == b,
+                  onSelected: (_) => setState(() => _bait.text = b),
                 ),
-              );
-            },
+            ],
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+            key: ValueKey('metoda_$_method'),
             initialValue: fishingMethods.contains(_method) ? _method : null,
             decoration: const InputDecoration(labelText: 'Metodă'),
             items: [
@@ -513,6 +555,15 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    // GPS-ul se marchează automat la înregistrare
+    if (widget.entry == null && _lat == null && _spotId == null) {
+      final pos = await LocationService.current();
+      if (pos != null) {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+      }
+    }
+    if (!mounted) return;
     final store = context.read<AppStore>();
     final species =
         _species == 'Altă specie' && _otherSpecies.text.trim().isNotEmpty
@@ -530,7 +581,7 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
       ..species = species
       ..weightKg = _parse(_weight.text)
       ..lengthCm = _parse(_length.text)
-      ..bait = (_baitField?.text ?? _bait.text).trim()
+      ..bait = _bait.text.trim()
       ..method = _method
       ..date = _date
       ..spotId = _spotId

@@ -200,3 +200,23 @@ List<Transfer> settle(Map<String, ExpenseBalance> balances) {
   }
   return result;
 }
+
+/// Cardul de cheltuială rapidă de care ține [e] (null = „Altele”): întâi
+/// presetarea aleasă (dacă n-a fost schimbată categoria), apoi numele
+/// cardului, apoi primul card din aceeași categorie.
+ExpensePreset? cardOf(Expense e, List<ExpensePreset> presets) {
+  for (final p in presets) {
+    if (p.id.isNotEmpty && e.presetId == p.id && e.category == p.category) {
+      return p;
+    }
+  }
+  final name = e.description.trim().toLowerCase();
+  for (final p in presets) {
+    if (name.isNotEmpty && name == p.name.trim().toLowerCase()) return p;
+  }
+  if (e.category == 'Altele') return null;
+  for (final p in presets) {
+    if (p.category == e.category) return p;
+  }
+  return null;
+}

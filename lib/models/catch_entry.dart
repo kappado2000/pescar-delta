@@ -19,6 +19,7 @@ const commonSpecies = [
 ];
 
 const fishingMethods = [
+  'Fund',
   'Feeder',
   'Crap (fund)',
   'Spinning',

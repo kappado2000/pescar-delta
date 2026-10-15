@@ -434,6 +434,14 @@ class _DayDetail extends StatelessWidget {
                 ' și ${hm.format(dusk)}–${hm.format(day.sunset.add(const Duration(hours: 1)))}',
                 style: small,
               ),
+              if (day.reasons.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    'Scor: 5 ${day.reasons.map((r) => '· $r').join(' ')} = ${day.score}',
+                    style: small?.copyWith(fontStyle: FontStyle.italic),
+                  ),
+                ),
             ],
           ),
         ),
@@ -455,6 +463,7 @@ void _openHours(BuildContext context, Forecast f, DayForecast d, String place) {
     MaterialPageRoute(
       builder: (_) => _DayHoursScreen(
         day: d,
+        allHours: f.hours,
         hours: f.hours
             .where(
               (h) =>
@@ -474,13 +483,21 @@ void _openHours(BuildContext context, Forecast f, DayForecast d, String place) {
 class _DayHoursScreen extends StatelessWidget {
   const _DayHoursScreen({
     required this.day,
+    required this.allHours,
     required this.hours,
     required this.title,
     required this.place,
   });
   final DayForecast day;
+  final List<HourPoint> allHours;
   final List<HourPoint> hours;
   final String title;
+
+  HourPoint? _before3h(HourPoint h) {
+    final t = h.time.subtract(const Duration(hours: 3));
+    return allHours.where((x) => x.time == t).firstOrNull;
+  }
+
   final String place;
 
   bool _good(DateTime t) {
@@ -585,64 +602,115 @@ class _DayHoursScreen extends StatelessWidget {
                       : 0.6,
                 ),
               ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 48,
-                    child: Text(
-                      hm.format(h.time),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Icon(_sky(h), size: 20, color: scheme.primary),
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 42,
-                    child: Text(
-                      '${h.temp.toStringAsFixed(0)}°',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      '${h.pressure.toStringAsFixed(0)} hPa '
-                      '${i == 0
-                          ? ''
-                          : h.pressure - hours[i - 1].pressure > 0.3
-                          ? '↑'
-                          : h.pressure - hours[i - 1].pressure < -0.3
-                          ? '↓'
-                          : '→'}'
-                      '\n💨 ${h.wind.toStringAsFixed(0)} km/h ${windDirName(h.windDir)}'
-                      '${h.precip >= 0.1 ? ' · 💧 ${h.precip.toStringAsFixed(1)} mm' : ''}',
-                      style: text.bodySmall,
-                    ),
-                  ),
-                  Tooltip(
-                    message: 'Cât de mult se potrivesc modelele',
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _certaintyColor(
-                          (1 -
-                                  (h.tempSpread / 6 +
-                                          h.windSpread / 25 +
-                                          h.pressureSpread / 8) /
-                                      3)
-                              .clamp(0.0, 1.0),
+              child: Builder(
+                builder: (context) {
+                  final (score, why) = hourScore(h, _before3h(h), day);
+                  final prev = i == 0 ? null : hours[i - 1];
+                  final trend = prev == null
+                      ? ''
+                      : h.pressure - prev.pressure > 0.3
+                      ? ' ↑'
+                      : h.pressure - prev.pressure < -0.3
+                      ? ' ↓'
+                      : ' →';
+                  final rain = rainLabel(h.precip);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 48,
+                            child: Text(
+                              hm.format(h.time),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Icon(_sky(h), size: 20, color: scheme.primary),
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              '${h.temp.toStringAsFixed(0)}°',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${h.pressure.toStringAsFixed(0)} hPa$trend · ☁ ${h.cloud.toStringAsFixed(0)}%',
+                              style: text.bodySmall,
+                            ),
+                          ),
+                          Tooltip(
+                            message: 'Scorul de pescuit al orei',
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: _scoreColor(score),
+                              child: Text(
+                                '$score',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Tooltip(
+                            message: 'Cât de mult se potrivesc modelele',
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _certaintyColor(
+                                  (1 -
+                                          (h.tempSpread / 6 +
+                                                  h.windSpread / 25 +
+                                                  h.pressureSpread / 8) /
+                                              3)
+                                      .clamp(0.0, 1.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 48, top: 3),
+                        child: Text(
+                          '💨 ${h.wind.toStringAsFixed(0)} km/h ${windDirName(h.windDir)}'
+                          '${h.gust >= h.wind + 5 ? ', rafale ${h.gust.toStringAsFixed(0)}' : ''}'
+                          '${rain.isNotEmpty ? ' · 💧 ploaie $rain ${h.precip.toStringAsFixed(1)} mm' : ' · fără ploaie'}',
+                          style: text.bodySmall,
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                      if (why.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 48, top: 2),
+                          child: Text(
+                            why.join(' · '),
+                            style: text.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
-              'Bulina din dreapta: verde = modelele se potrivesc, galben = probabil, '
+              'Cercul cu cifră = scorul de pescuit al orei (0–10), cu motivele dedesubt. '
+              'Bulina mică: verde = modelele se potrivesc, galben = probabil, '
               'roșu = incert. Ora curentă e încadrată cu albastru.',
               style: text.bodySmall,
             ),

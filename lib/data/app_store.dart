@@ -58,6 +58,10 @@ class AppStore extends ChangeNotifier {
   String? get lastPayerId => _box.get('lastPayerId') as String?;
   set lastPayerId(String? id) => _box.put('lastPayerId', id);
 
+  /// Ultimul pescar care a prins (implicit la o captură nouă).
+  String? get lastCatcherId => _box.get('lastCatcherId') as String?;
+  set lastCatcherId(String? id) => _box.put('lastCatcherId', id);
+
   /// Plătitorul implicit ales în Setări (null = ultimul care a plătit).
   String? get defaultPayerId => _box.get('defaultPayerId') as String?;
 

@@ -259,9 +259,14 @@ class _QuickExpenseState extends State<_QuickExpense> {
     });
   }
 
-  bool _belongs(Expense e, ExpensePreset p) =>
-      (p.id.isNotEmpty && e.presetId == p.id) ||
-      e.description.trim().toLowerCase() == p.name.trim().toLowerCase();
+  bool _belongs(Expense e, ExpensePreset p) {
+    final presets = context.read<AppStore>().expensePresets;
+    // card temporar (fără id, ex. „Încă una” din filtru): după nume
+    if (p.id.isEmpty) {
+      return e.description.trim().toLowerCase() == p.name.trim().toLowerCase();
+    }
+    return cardOf(e, presets)?.id == p.id;
+  }
 
   /// Totalul cheltuit în sezon pe un bun (după presetare sau după nume).
   (double, int) _totalFor(ExpensePreset p) {

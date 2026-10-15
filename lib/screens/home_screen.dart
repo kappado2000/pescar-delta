@@ -342,7 +342,14 @@ class _Action extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(16),
+      // bordură subțire, în nuanța mai închisă a culorii butonului
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Color.lerp(color, Colors.black, 0.25)!.withValues(alpha: 0.75),
+          width: 0.9,
+        ),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,

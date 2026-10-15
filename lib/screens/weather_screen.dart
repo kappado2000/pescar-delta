@@ -212,7 +212,14 @@ class _ForecastView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
             child: Row(
               children: [
-                for (final d in f.days) Expanded(child: _DayColumn(day: d)),
+                for (final d in f.days)
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _openHours(context, f, d, place),
+                      child: _DayColumn(day: d),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -241,17 +248,19 @@ class _ForecastView extends StatelessWidget {
         // ---------- detaliu pe fiecare zi ----------
         for (final (i, d) in f.days.indexed)
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: _DayDetail(
-                day: d,
-                label: i == 0
-                    ? 'Azi'
-                    : i == 1
-                    ? 'Mâine'
-                    : toBeginningOfSentenceCase(
-                        DateFormat('EEEE, d MMM').format(d.date),
-                      ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => _openHours(context, f, d, place),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _DayDetail(day: d, label: _dayLabel(i, d.date)),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
               ),
             ),
           ),
@@ -433,6 +442,217 @@ class _DayDetail extends StatelessWidget {
   }
 }
 
+String _dayLabel(int i, DateTime date) => i == 0
+    ? 'Azi'
+    : i == 1
+    ? 'Mâine'
+    : toBeginningOfSentenceCase(DateFormat('EEEE, d MMM').format(date));
+
+void _openHours(BuildContext context, Forecast f, DayForecast d, String place) {
+  final i = f.days.indexOf(d);
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => _DayHoursScreen(
+        day: d,
+        hours: f.hours
+            .where(
+              (h) =>
+                  h.time.year == d.date.year &&
+                  h.time.month == d.date.month &&
+                  h.time.day == d.date.day,
+            )
+            .toList(),
+        title: _dayLabel(i, d.date),
+        place: place,
+      ),
+    ),
+  );
+}
+
+/// O zi de prognoză defalcată pe ore.
+class _DayHoursScreen extends StatelessWidget {
+  const _DayHoursScreen({
+    required this.day,
+    required this.hours,
+    required this.title,
+    required this.place,
+  });
+  final DayForecast day;
+  final List<HourPoint> hours;
+  final String title;
+  final String place;
+
+  bool _good(DateTime t) {
+    final dawn0 = day.sunrise.subtract(const Duration(hours: 1));
+    final dawn1 = day.sunrise.add(const Duration(hours: 2));
+    final dusk0 = day.sunset.subtract(const Duration(hours: 1));
+    final dusk1 = day.sunset.add(const Duration(hours: 1));
+    final end = t.add(const Duration(minutes: 59));
+    return (end.isAfter(dawn0) && t.isBefore(dawn1)) ||
+        (end.isAfter(dusk0) && t.isBefore(dusk1));
+  }
+
+  IconData _sky(HourPoint h) {
+    final night = h.time.isBefore(day.sunrise) || h.time.isAfter(day.sunset);
+    if (h.precip >= 1) return Icons.water_drop;
+    if (h.precip >= 0.2) return Icons.grain;
+    if (h.wind >= 35) return Icons.air;
+    return night ? Icons.nightlight_round : Icons.wb_sunny_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hm = DateFormat('HH:mm');
+    final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+    return Scaffold(
+      appBar: AppBar(title: Text('$title · $place')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: _DayDetail(day: day, label: title),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 6),
+                    child: Text(
+                      'Presiunea în cursul zilei (hPa)',
+                      style: text.titleSmall,
+                    ),
+                  ),
+                  if (hours.length > 1)
+                    SizedBox(height: 150, child: _PressureChart(hours: hours)),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 6),
+                    child: Text(
+                      '☀ răsărit ${hm.format(day.sunrise)} · apus ${hm.format(day.sunset)}',
+                      style: text.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Sea.sunset.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '= oră bună de pescuit (zori / apus)',
+                  style: text.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          for (final (i, h) in hours.indexed)
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: _good(h.time)
+                    ? Sea.sunset.withValues(alpha: 0.18)
+                    : scheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color:
+                      h.time.hour == now.hour &&
+                          h.time.day == now.day &&
+                          h.time.month == now.month
+                      ? Sea.ocean
+                      : scheme.outlineVariant.withValues(alpha: 0.5),
+                  width: h.time.hour == now.hour && h.time.day == now.day
+                      ? 2
+                      : 0.6,
+                ),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      hm.format(h.time),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Icon(_sky(h), size: 20, color: scheme.primary),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 42,
+                    child: Text(
+                      '${h.temp.toStringAsFixed(0)}°',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${h.pressure.toStringAsFixed(0)} hPa '
+                      '${i == 0
+                          ? ''
+                          : h.pressure - hours[i - 1].pressure > 0.3
+                          ? '↑'
+                          : h.pressure - hours[i - 1].pressure < -0.3
+                          ? '↓'
+                          : '→'}'
+                      '\n💨 ${h.wind.toStringAsFixed(0)} km/h ${windDirName(h.windDir)}'
+                      '${h.precip >= 0.1 ? ' · 💧 ${h.precip.toStringAsFixed(1)} mm' : ''}',
+                      style: text.bodySmall,
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'Cât de mult se potrivesc modelele',
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _certaintyColor(
+                          (1 -
+                                  (h.tempSpread / 6 +
+                                          h.windSpread / 25 +
+                                          h.pressureSpread / 8) /
+                                      3)
+                              .clamp(0.0, 1.0),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              'Bulina din dreapta: verde = modelele se potrivesc, galben = probabil, '
+              'roșu = incert. Ora curentă e încadrată cu albastru.',
+              style: text.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PressureChart extends StatelessWidget {
   const _PressureChart({required this.hours});
   final List<HourPoint> hours;
@@ -457,16 +677,18 @@ class _PressureChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         extraLinesData: ExtraLinesData(
           verticalLines: [
-            VerticalLine(
-              x: now,
-              color: scheme.tertiary,
-              strokeWidth: 1,
-              dashArray: [4, 4],
-              label: VerticalLineLabel(
-                show: true,
-                labelResolver: (_) => 'acum',
+            // linia „acum” doar dacă ora curentă e în intervalul graficului
+            if (now >= 0 && now <= spots.last.x)
+              VerticalLine(
+                x: now,
+                color: scheme.tertiary,
+                strokeWidth: 1,
+                dashArray: [4, 4],
+                label: VerticalLineLabel(
+                  show: true,
+                  labelResolver: (_) => 'acum',
+                ),
               ),
-            ),
           ],
         ),
         titlesData: FlTitlesData(

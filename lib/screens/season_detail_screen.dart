@@ -366,15 +366,7 @@ class _PermitsTab extends StatelessWidget {
     final pending = tasks
         .where((t) => season.purchased[t.key] != true)
         .toList();
-    // Durata permiselor: fundal alb, varianta bifată cu tenta ei mai închisă.
-    final scheme = Theme.of(context).colorScheme;
-    final segStyle = SegmentedButton.styleFrom(
-      backgroundColor: scheme.brightness == Brightness.light
-          ? Colors.white
-          : scheme.surfaceContainerHighest,
-      selectedBackgroundColor: scheme.secondaryContainer,
-      minimumSize: const Size(0, 44),
-    );
+    final segStyle = whiteSegmentStyle(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [

@@ -227,6 +227,7 @@ class _ExpenseListState extends State<_ExpenseList> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: SegmentedButton<bool?>(
+            style: whiteSegmentStyle(context),
             showSelectedIcon: false,
             segments: [
               const ButtonSegment(value: null, label: Text('Toate')),

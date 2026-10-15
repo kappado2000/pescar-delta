@@ -311,7 +311,7 @@ class _SeasonHeader extends StatelessWidget {
                     '🌡 ${f.current.temp.toStringAsFixed(0)}° · '
                     '${f.current.pressure.toStringAsFixed(0)} hPa · '
                     'vânt ${f.current.wind.toStringAsFixed(0)} km/h'
-                    '${today != null ? ' · pescuit azi: ${today.score}/10' : ''}',
+                    '${today != null ? ' · pescuit: ${today.score}/10' : ''}',
                     style: text.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),

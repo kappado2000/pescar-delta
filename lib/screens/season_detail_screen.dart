@@ -514,129 +514,154 @@ class _NeedsCard extends StatelessWidget {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
         children: [
-          for (final (i, c) in cats.indexed)
-            Builder(
-              builder: (context) {
-                final list = filled(c);
-                final catDone = list.where((x) => x.done).length;
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 3),
-                  child: ExpansionTile(
-                    dense: true,
-                    leading: CircleAvatar(
-                      radius: 13,
-                      backgroundColor: needsColor(context),
-                      child: Text(
-                        '${i + 1}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: needsOnColor(context),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: cats.length,
+            onReorderItem: store.reorderNeedCategory,
+            itemBuilder: (context, i) {
+              final c = cats[i];
+              return Builder(
+                key: ValueKey(c.id),
+                builder: (context) {
+                  final list = filled(c);
+                  final catDone = list.where((x) => x.done).length;
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    child: ExpansionTile(
+                      dense: true,
+                      leading: ReorderableDragStartListener(
+                        index: i,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.drag_indicator,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(width: 2),
+                            CircleAvatar(
+                              radius: 13,
+                              backgroundColor: needsColor(context),
+                              child: Text(
+                                '${i + 1}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: needsOnColor(context),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    title: Text(c.label),
-                    subtitle: Text(
-                      list.isEmpty
-                          ? 'nimic notat'
-                          : '$catDone/${list.length} ${c.doneLabel}',
-                      style: TextStyle(
-                        color: list.isNotEmpty && catDone == list.length
-                            ? Sea.good
-                            : null,
+                      title: Text(c.label),
+                      subtitle: Text(
+                        list.isEmpty
+                            ? 'nimic notat'
+                            : '$catDone/${list.length} ${c.doneLabel}',
+                        style: TextStyle(
+                          color: list.isNotEmpty && catDone == list.length
+                              ? Sea.good
+                              : null,
+                        ),
                       ),
-                    ),
-                    children: [
-                      ReorderableListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        buildDefaultDragHandles: false,
-                        itemCount: list.length,
-                        onReorderItem: (from, to) {
-                          // ordinea nouă a rândurilor completate; cele goale rămân la final
-                          final ordered = List.of(list);
-                          ordered.insert(to, ordered.removeAt(from));
-                          final all = season.needsOf(c);
-                          final empty = all
-                              .where((x) => x.text.trim().isEmpty)
-                              .toList();
-                          all
-                            ..clear()
-                            ..addAll(ordered)
-                            ..addAll(empty);
-                          store.upsertSeason(season);
-                        },
-                        itemBuilder: (context, n) {
-                          final item = list[n];
-                          return SwipeToDelete(
-                            key: ValueKey(item.id),
-                            id: item.id,
-                            number: n + 1,
-                            text: item.text,
-                            onDelete: () {
-                              season.needsOf(c).remove(item);
-                              store.upsertSeason(season);
-                            },
-                            child: CheckboxListTile(
-                              dense: true,
-                              visualDensity: VisualDensity.compact,
-                              value: item.done,
-                              controlAffinity: ListTileControlAffinity.trailing,
-                              secondary: ReorderableDragStartListener(
-                                index: n,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.drag_indicator,
-                                      size: 20,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outline,
-                                    ),
-                                    SizedBox(
-                                      width: 28,
-                                      child: Text(
-                                        '${n + 1}.',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              title: Text(
-                                item.text,
-                                style: TextStyle(
-                                  decoration: item.done
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              onChanged: (v) {
-                                item.done = v ?? false;
+                      children: [
+                        ReorderableListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: false,
+                          itemCount: list.length,
+                          onReorderItem: (from, to) {
+                            // ordinea nouă a rândurilor completate; cele goale rămân la final
+                            final ordered = List.of(list);
+                            ordered.insert(to, ordered.removeAt(from));
+                            final all = season.needsOf(c);
+                            final empty = all
+                                .where((x) => x.text.trim().isEmpty)
+                                .toList();
+                            all
+                              ..clear()
+                              ..addAll(ordered)
+                              ..addAll(empty);
+                            store.upsertSeason(season);
+                          },
+                          itemBuilder: (context, n) {
+                            final item = list[n];
+                            return SwipeToDelete(
+                              key: ValueKey(item.id),
+                              id: item.id,
+                              number: n + 1,
+                              text: item.text,
+                              onDelete: () {
+                                season.needsOf(c).remove(item);
                                 store.upsertSeason(season);
                               },
-                            ),
-                          );
-                        },
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          icon: const Icon(Icons.edit_note),
-                          label: Text(
-                            list.isEmpty ? 'Adaugă' : 'Editează / adaugă',
-                          ),
-                          onPressed: () => openTab(i),
+                              child: CheckboxListTile(
+                                dense: true,
+                                visualDensity: VisualDensity.compact,
+                                value: item.done,
+                                controlAffinity:
+                                    ListTileControlAffinity.trailing,
+                                secondary: ReorderableDragStartListener(
+                                  index: n,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.drag_indicator,
+                                        size: 20,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline,
+                                      ),
+                                      SizedBox(
+                                        width: 28,
+                                        child: Text(
+                                          '${n + 1}.',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                title: Text(
+                                  item.text,
+                                  style: TextStyle(
+                                    decoration: item.done
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                                ),
+                                onChanged: (v) {
+                                  item.done = v ?? false;
+                                  store.upsertSeason(season);
+                                },
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            icon: const Icon(Icons.edit_note),
+                            label: Text(
+                              list.isEmpty ? 'Adaugă' : 'Editează / adaugă',
+                            ),
+                            onPressed: () => openTab(i),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(

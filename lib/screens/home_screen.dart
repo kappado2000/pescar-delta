@@ -10,6 +10,7 @@ import '../services/permit_catalog.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
 import '../widgets/delta_scene.dart';
+import '../widgets/open_problems.dart';
 import '../widgets/quick_expense_sheet.dart';
 import 'catches_screen.dart';
 import 'expenses_screen.dart';
@@ -123,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   weather: _weather,
                   onTap: () => _open(season, 0),
                 ),
+                OpenProblemsRow(season: season, onTap: () => _open(season, 3)),
                 const SizedBox(height: 4),
                 // acțiuni rapide, butoane mari
                 GridView.count(

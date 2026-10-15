@@ -313,6 +313,11 @@ class AppStore extends ChangeNotifier {
 
   // ---------- Vremea pe locația sezonului ----------
   /// Sezonul „de acum”: cel în desfășurare, altfel următorul, altfel ultimul.
+  /// Problemele de remediat nebifate din sezoanele care au început înaintea
+  /// lui [season] (fără cele scrise din nou în [season]).
+  List<(Season, NeedItem)> openProblemsBefore(Season season) =>
+      openProblems(seasons, needCategories, season);
+
   Season? get currentSeason {
     final now = DateTime.now();
     final inProgress = seasons.where((s) => s.contains(now)).firstOrNull;

@@ -29,6 +29,7 @@ class DocumentsEditor extends StatefulWidget {
 class _DocumentsEditorState extends State<DocumentsEditor> {
   Future<void> _add() async {
     final choice = await showModalBottomSheet<(String, ImageSource)>(
+      useRootNavigator: true,
       context: context,
       builder: (c) => SafeArea(
         child: ListView(

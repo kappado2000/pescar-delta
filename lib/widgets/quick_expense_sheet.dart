@@ -162,6 +162,7 @@ Future<void> showQuickExpense(
     return;
   }
   await showModalBottomSheet(
+    useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     useSafeArea: true,

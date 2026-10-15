@@ -18,9 +18,13 @@ class CatchMediaEditor extends StatefulWidget {
     super.key,
     required this.catchId,
     required this.media,
+    this.onCaptured,
   });
   final String catchId;
   final List<CatchMedia> media;
+
+  /// Apelat după o poză / un video nou (ex. ca să se ia poziția GPS).
+  final VoidCallback? onCaptured;
 
   @override
   State<CatchMediaEditor> createState() => _CatchMediaEditorState();
@@ -42,6 +46,7 @@ class _CatchMediaEditorState extends State<CatchMediaEditor> {
 
   Future<void> _addFiles(List<XFile> files) async {
     if (files.isEmpty) return;
+    widget.onCaptured?.call();
     final store = context.read<AppStore>();
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);

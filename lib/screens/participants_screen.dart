@@ -72,6 +72,7 @@ class _ParticipantEditScreenState extends State<ParticipantEditScreen> {
       widget.participant ?? Participant(id: newId(), nume: '', prenume: '');
   late final _nume = TextEditingController(text: _p.nume);
   late final _prenume = TextEditingController(text: _p.prenume);
+  late final _porecla = TextEditingController(text: _p.porecla);
   late final _cnp = TextEditingController(text: _p.cnp);
   late final _email = TextEditingController(text: _p.email);
   late final _telefon = TextEditingController(text: _p.telefon);
@@ -116,6 +117,7 @@ class _ParticipantEditScreenState extends State<ParticipantEditScreen> {
           children: [
             _field(_nume, 'Nume (de familie)', required: true),
             _field(_prenume, 'Prenume', required: true),
+            _field(_porecla, 'Cum îi spunem (ex. Adi) — apare la capturi'),
             DropdownButtonFormField<ParticipantCategory>(
               initialValue: _category,
               decoration: const InputDecoration(
@@ -248,6 +250,7 @@ class _ParticipantEditScreenState extends State<ParticipantEditScreen> {
     _p
       ..nume = _nume.text.trim()
       ..prenume = _prenume.text.trim()
+      ..porecla = _porecla.text.trim()
       ..cnp = _cnp.text.trim()
       ..email = _email.text.trim()
       ..telefon = _telefon.text.trim()

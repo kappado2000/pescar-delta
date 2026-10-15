@@ -398,23 +398,11 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
                   : null,
             ),
           ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              if (_anglers(store).isEmpty)
-                const Text(
-                  'Adaugă întâi participanții (Setări → Participanți).',
-                ),
-              for (final p in _anglers(store))
-                ChoiceChip(
-                  avatar: const Icon(Icons.phishing, size: 18),
-                  label: Text(p.shortName),
-                  selected: _participantId == p.id,
-                  onSelected: (_) => setState(() => _participantId = p.id),
-                ),
-            ],
+          const SizedBox(height: 6),
+          _AnglerPicker(
+            anglers: _anglers(store),
+            selected: _participantId,
+            onSelected: (id) => setState(() => _participantId = id),
           ),
           const SizedBox(height: 12),
 
@@ -672,6 +660,63 @@ class _WeatherInfo extends StatelessWidget {
               'vânt ${w.windKmh!.toStringAsFixed(0)} km/h ${w.windDir != null ? windDirName(w.windDir!) : ''}',
           ].join(' · '),
         ),
+      ),
+    );
+  }
+}
+
+/// „Cine a prins”: segmente cu numele de alint (ADI · VASILE), cel ales cu
+/// fundal mai închis — ca la permisul de ambarcațiune. La echipe mari (peste
+/// 4) trece pe butoane care se așază pe mai multe rânduri.
+class _AnglerPicker extends StatelessWidget {
+  const _AnglerPicker({
+    required this.anglers,
+    required this.selected,
+    required this.onSelected,
+  });
+  final List<Participant> anglers;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (anglers.isEmpty) {
+      return const Text('Adaugă întâi participanții (Setări → Participanți).');
+    }
+    if (anglers.length > 4) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final p in anglers)
+            ChoiceChip(
+              label: Text(p.callName.toUpperCase()),
+              selected: selected == p.id,
+              onSelected: (_) => onSelected(p.id),
+            ),
+        ],
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        style: whiteSegmentStyle(context),
+        emptySelectionAllowed: true,
+        showSelectedIcon: false,
+        segments: [
+          for (final p in anglers)
+            ButtonSegment(
+              value: p.id,
+              label: Text(
+                p.callName.toUpperCase(),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+        selected: {?selected},
+        onSelectionChanged: (v) {
+          if (v.isNotEmpty) onSelected(v.first);
+        },
       ),
     );
   }

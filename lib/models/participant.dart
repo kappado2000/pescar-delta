@@ -33,6 +33,7 @@ class Participant {
     this.ciNumar = '',
     this.ciExpira,
     this.pensieDoc = '',
+    this.porecla = '',
     List<DocCopy>? documents,
   }) : documents = documents ?? [];
 
@@ -52,11 +53,22 @@ class Participant {
 
   /// Nr. decizie / cupon de pensie — dovada gratuității.
   String pensieDoc;
+
+  /// Cum îi spunem în echipă (ex. „Adi”); gol = primul prenume.
+  String porecla;
   List<DocCopy> documents;
 
   bool get ciExpired => ciExpira != null && ciExpira!.isBefore(DateTime.now());
 
   String get fullName => '$nume $prenume'.trim();
+
+  /// Numele de alint pentru selecții rapide: porecla sau primul prenume.
+  String get callName {
+    final n = porecla.trim();
+    if (n.isNotEmpty) return n;
+    final first = prenume.trim().split(RegExp(r'[\s-]+')).first;
+    return first.isEmpty ? nume.trim() : first;
+  }
 
   /// Numele scurt pentru decontare: numele de familie + inițiala, ex. „Pop S.”.
   String get shortName {
@@ -91,6 +103,7 @@ class Participant {
     'ciNumar': ciNumar,
     'ciExpira': ciExpira?.toIso8601String(),
     'pensieDoc': pensieDoc,
+    'porecla': porecla,
     'documents': documents.map((d) => d.toJson()).toList(),
   };
 
@@ -109,6 +122,7 @@ class Participant {
     ciNumar: j['ciNumar'] ?? '',
     ciExpira: j['ciExpira'] == null ? null : DateTime.parse(j['ciExpira']),
     pensieDoc: j['pensieDoc'] ?? '',
+    porecla: j['porecla'] ?? '',
     documents: DocCopy.listFrom(j['documents']),
   );
 }

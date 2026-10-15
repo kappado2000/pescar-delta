@@ -352,7 +352,14 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // ---------- Poze și video ----------
-          CatchMediaEditor(catchId: _c.id, media: _media),
+          CatchMediaEditor(
+            catchId: _c.id,
+            media: _media,
+            // la poză / video se marchează imediat locul pe hartă
+            onCaptured: () {
+              if (_lat == null && !_locating) _locate();
+            },
+          ),
           const SizedBox(height: 8),
 
           // ---------- Specie ----------

@@ -18,14 +18,6 @@ import 'season_detail_screen.dart';
 import 'seasons_screen.dart';
 import 'settings_screen.dart';
 
-String _greeting() {
-  final h = DateTime.now().hour;
-  if (h >= 5 && h < 11) return 'Bună dimineața, fir întins!';
-  if (h >= 11 && h < 18) return 'Bună ziua, fir întins!';
-  if (h >= 18 && h < 22) return 'Bună seara, fir întins!';
-  return 'Noapte bună, pescarule!';
-}
-
 /// Acasă: sezonul curent, cu acțiunile rapide și starea lui.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -108,8 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: SceneAppBar(
         title: 'Pescar Deltă',
-        caption:
-            '${_greeting()} · ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
+        titleSuffix: '  - ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
         height: 150,
         actions: [
           IconButton(

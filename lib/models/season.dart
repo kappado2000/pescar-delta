@@ -111,6 +111,16 @@ class Season {
   }
 
   String get title => '${kind.label} $year';
+
+  /// Perioada scurtă, pe un rând: „19.10 - 25.10.2026”.
+  String get periodLabel {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final from = start.year == end.year
+        ? '${two(start.day)}.${two(start.month)}'
+        : '${two(start.day)}.${two(start.month)}.${start.year}';
+    return '$from - ${two(end.day)}.${two(end.month)}.${end.year}';
+  }
+
   String get folderName => '$year-${kind.name}';
 
   /// Sezoanele se arhivează automat după ce trece anul.

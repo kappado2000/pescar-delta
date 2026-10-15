@@ -123,6 +123,14 @@ ThemeData buildTheme(Brightness brightness) {
   );
 }
 
+/// Culoarea scorului de pescuit: verde (bun) → roșu (slab).
+Color fishingScoreColor(int score) => switch (score) {
+  >= 8 => Sea.good,
+  >= 6 => Sea.teal,
+  >= 4 => Sea.ok,
+  _ => Sea.bad,
+};
+
 /// Culoarea „Necesar”: maro pe tema luminoasă, portocaliu pe cea dark.
 Color needsColor(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark

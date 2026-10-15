@@ -307,13 +307,38 @@ class _SeasonHeader extends StatelessWidget {
                     );
                   }
                   final today = f.days.isNotEmpty ? f.days.first : null;
-                  return Text(
-                    '🌡 ${f.current.temp.toStringAsFixed(0)}° · '
-                    '${f.current.pressure.toStringAsFixed(0)} hPa · '
-                    'vânt ${f.current.wind.toStringAsFixed(0)} km/h'
-                    '${today != null ? ' · pescuit: ${today.score}/10' : ''}',
-                    style: text.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  final style = text.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  );
+                  return Text.rich(
+                    TextSpan(
+                      style: style,
+                      children: [
+                        TextSpan(
+                          text:
+                              '🌡 ${f.current.temp.toStringAsFixed(0)}° · '
+                              '${f.current.pressure.toStringAsFixed(0)} hPa · '
+                              'vânt ${f.current.wind.toStringAsFixed(0)} km/h',
+                        ),
+                        if (today != null) ...[
+                          const TextSpan(text: ' · pescuit: '),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: CircleAvatar(
+                              radius: 13,
+                              backgroundColor: fishingScoreColor(today.score),
+                              child: Text(
+                                '${today.score}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   );
                 },

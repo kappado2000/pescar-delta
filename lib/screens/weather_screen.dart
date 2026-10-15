@@ -278,12 +278,7 @@ class _ForecastView extends StatelessWidget {
   }
 }
 
-Color _scoreColor(int score) => switch (score) {
-  >= 8 => Sea.good,
-  >= 6 => Sea.teal,
-  >= 4 => Sea.ok,
-  _ => Sea.bad,
-};
+Color _scoreColor(int score) => fishingScoreColor(score);
 
 Color _certaintyColor(double c) =>
     c >= 0.7 ? Sea.good : (c >= 0.45 ? Sea.ok : Sea.bad);

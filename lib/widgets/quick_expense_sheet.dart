@@ -280,8 +280,9 @@ class _QuickExpenseState extends State<_QuickExpense> {
     return (list.fold(0.0, (s, e) => s + e.amount), list.length);
   }
 
-  String _sub((double, int) t) => switch (t) {
-    (_, 0) => 'nimic încă',
+  /// Suma de sub titlul cardului; nimic cât timp nu s-a cheltuit pe el.
+  String? _sub((double, int) t) => switch (t) {
+    (_, 0) => null,
     (final sum, final n) => '${lei(sum)} · $n×',
   };
 

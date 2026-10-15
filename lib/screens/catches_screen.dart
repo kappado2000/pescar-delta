@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../data/app_store.dart';
 import 'home_shell.dart';
 import '../models/catch_entry.dart';
+import '../models/participant.dart';
 import '../models/species_data.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
@@ -201,6 +202,19 @@ class _CatchCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (store.participant(c.participantId) case final p?)
+                      Text(
+                        '🎣 ${p.shortName}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      )
+                    else
+                      Text(
+                        '⚠ Fără pescar — apasă și alege cine a prins',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     if (details.isNotEmpty) Text(details),
                     Text(
                       '${_dateTime.format(c.date)}${spot != null ? ' · ${spot.name}' : ''}',
@@ -294,9 +308,22 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
     super.initState();
     if (!commonSpecies.contains(_species)) _species = 'Altă specie';
     if (widget.entry == null) {
+      // implicit: ultimul care a prins, dacă e în echipă
+      final store = context.read<AppStore>();
+      final last = store.lastCatcherId;
+      if (_anglers(store).any((p) => p.id == last)) _participantId = last;
       _applySpeciesDefaults();
       if (_lat == null && _spotId == null) _locate();
     }
+  }
+
+  /// Echipa sezonului capturii (toți participanții dacă nu e niciun sezon);
+  /// pescarul deja ales rămâne în listă.
+  List<Participant> _anglers(AppStore store) {
+    final season = store.seasons.where((s) => s.contains(_date)).firstOrNull;
+    final ids = {...?season?.participantIds, ?_participantId};
+    final team = store.participants.where((p) => ids.contains(p.id)).toList();
+    return season == null || team.isEmpty ? store.participants : team;
   }
 
   /// Momeala și metoda implicite ale speciei (la o captură nouă).
@@ -361,6 +388,35 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
             },
           ),
           const SizedBox(height: 8),
+
+          // ---------- Cine a prins (obligatoriu) ----------
+          Text(
+            'Cine a prins',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: _participantId == null
+                  ? Theme.of(context).colorScheme.error
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              if (_anglers(store).isEmpty)
+                const Text(
+                  'Adaugă întâi participanții (Setări → Participanți).',
+                ),
+              for (final p in _anglers(store))
+                ChoiceChip(
+                  avatar: const Icon(Icons.phishing, size: 18),
+                  label: Text(p.shortName),
+                  selected: _participantId == p.id,
+                  onSelected: (_) => setState(() => _participantId = p.id),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
           // ---------- Specie ----------
           DropdownButtonFormField<String>(
@@ -453,19 +509,6 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
                 DropdownMenuItem(value: m, child: Text(m)),
             ],
             onChanged: (v) => setState(() => _method = v ?? ''),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String?>(
-            initialValue: store.participant(_participantId) == null
-                ? null
-                : _participantId,
-            decoration: const InputDecoration(labelText: 'Cine a prins'),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('—')),
-              for (final p in store.participants)
-                DropdownMenuItem(value: p.id, child: Text(p.fullName)),
-            ],
-            onChanged: (v) => setState(() => _participantId = v),
           ),
           const SizedBox(height: 12),
 
@@ -561,6 +604,12 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
   double? _parse(String s) => double.tryParse(s.trim().replaceAll(',', '.'));
 
   Future<void> _save() async {
+    if (_participantId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Alege cine a prins peștele (sus).')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     // GPS-ul se marchează automat la înregistrare
     if (widget.entry == null && _lat == null && _spotId == null) {
@@ -598,6 +647,7 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
       ..media = _media
       ..released = _released
       ..notes = _notes.text.trim();
+    store.lastCatcherId = _participantId;
     await store.upsertCatch(_c);
     if (mounted) Navigator.pop(context);
   }

@@ -172,3 +172,16 @@ Color speciesColor(String species) {
       species.codeUnits.fold<int>(0, (a, b) => a + b) % palette.length;
   return palette[i];
 }
+
+/// Selectoarele pe segmente: fundal alb, segmentul ales cu tenta lui mai
+/// închisă (pe Dark, gri închis în loc de alb).
+ButtonStyle whiteSegmentStyle(BuildContext context) {
+  final scheme = Theme.of(context).colorScheme;
+  return SegmentedButton.styleFrom(
+    backgroundColor: scheme.brightness == Brightness.light
+        ? Colors.white
+        : scheme.surfaceContainerHighest,
+    selectedBackgroundColor: scheme.secondaryContainer,
+    minimumSize: const Size(0, 44),
+  );
+}

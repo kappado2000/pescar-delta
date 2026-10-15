@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 
 import '../data/app_store.dart';
 import 'home_shell.dart';
+import '../models/awards.dart';
 import '../models/catch_entry.dart';
 import '../models/participant.dart';
+import '../models/season.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
 import '../widgets/delta_scene.dart';
@@ -62,7 +64,7 @@ class _StatsScreenState extends State<StatsScreen> {
         .toList();
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: SceneAppBar(
           title: 'Statistici',
@@ -74,6 +76,7 @@ class _StatsScreenState extends State<StatsScreen> {
             tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'Rezumat'),
+              Tab(text: '🏆 Premii'),
               Tab(text: 'Participanți'),
               Tab(text: 'Pe zile'),
               Tab(text: 'Sortiment'),
@@ -99,6 +102,9 @@ class _StatsScreenState extends State<StatsScreen> {
             list.isEmpty
                 ? const _Empty()
                 : _StatsBody(catches: list, title: options[_filter]!),
+            list.isEmpty
+                ? const _Empty()
+                : _AwardsTab(catches: list, seasons: filterSeasons.toList()),
             _ParticipantsStats(catches: list, enrolled: enrolled),
             list.isEmpty ? const _Empty() : _DailyStats(catches: list),
             list.isEmpty ? const _Empty() : _SpeciesTable(catches: list),
@@ -658,6 +664,163 @@ class _HourChart extends StatelessWidget {
               ],
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Premiile pe sezon și pe zi: cea mai mare captură, cea mai mare cantitate,
+/// cei mai mulți pești.
+class _AwardsTab extends StatelessWidget {
+  const _AwardsTab({required this.catches, required this.seasons});
+  final List<CatchEntry> catches;
+  final List<Season> seasons;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final bySeason = [
+      for (final s
+          in seasons.toList()..sort((a, b) => b.start.compareTo(a.start)))
+        (s, catches.where((c) => s.contains(c.date)).toList()),
+    ].where((e) => e.$2.isNotEmpty).toList();
+
+    final byDay = <DateTime, List<CatchEntry>>{};
+    for (final c in catches) {
+      byDay
+          .putIfAbsent(
+            DateTime(c.date.year, c.date.month, c.date.day),
+            () => [],
+          )
+          .add(c);
+    }
+    final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12 + kBannerSpace),
+      children: [
+        if (bySeason.isNotEmpty) ...[
+          Text('Premiile sezonului', style: text.titleMedium),
+          for (final (s, list) in bySeason)
+            _AwardsCard(
+              title: s.title,
+              awards: computeAwards(list),
+              gold: true,
+            ),
+          const SizedBox(height: 12),
+        ],
+        Text('Premiile zilei', style: text.titleMedium),
+        for (final d in days)
+          _AwardsCard(
+            title: DateFormat('EEEE, d MMMM yyyy').format(d),
+            awards: computeAwards(byDay[d]!),
+          ),
+      ],
+    );
+  }
+}
+
+class _AwardsCard extends StatelessWidget {
+  const _AwardsCard({
+    required this.title,
+    required this.awards,
+    this.gold = false,
+  });
+  final String title;
+  final Awards awards;
+  final bool gold;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = context.read<AppStore>();
+    final text = Theme.of(context).textTheme;
+    String name(String? id) => store.participant(id)?.fullName ?? 'fără pescar';
+    String names(List<String> ids) => ids.map(name).join(', ');
+    String biggest(CatchEntry c) => [
+      name(c.participantId),
+      c.species,
+      _kg(c.weightKg!),
+      if (c.lengthCm != null) _cm(c.lengthCm!),
+      if (gold) DateFormat('d MMM').format(c.date),
+    ].join(' · ');
+
+    Widget row(String emoji, String label, String who, String? value) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 32,
+                child: Text(emoji, style: const TextStyle(fontSize: 20)),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: text.bodySmall),
+                    Text(
+                      who,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              if (value != null)
+                Text(
+                  value,
+                  style: text.titleMedium?.copyWith(
+                    color: Sea.sunset,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+        );
+
+    return Card(
+      shape: gold
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Sea.sunset, width: 1.2),
+            )
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${gold ? '🏆 ' : ''}$title',
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const Divider(),
+            row(
+              '🥇',
+              'Cea mai mare captură',
+              awards.biggest.isEmpty
+                  ? 'nicio captură cântărită'
+                  : awards.biggest.map(biggest).join('\n'),
+              null,
+            ),
+            row(
+              '⚖️',
+              'Cea mai mare cantitate',
+              awards.topKgIds.isEmpty ? '—' : names(awards.topKgIds),
+              awards.topKgIds.isEmpty ? null : _kg(awards.topKg),
+            ),
+            row(
+              '🐟',
+              'Cei mai mulți pești',
+              awards.topCountIds.isEmpty ? '—' : names(awards.topCountIds),
+              awards.topCountIds.isEmpty
+                  ? null
+                  : awards.topCount == 1
+                  ? '1 pește'
+                  : '${awards.topCount} pești',
+            ),
+          ],
+        ),
       ),
     );
   }

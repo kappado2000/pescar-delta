@@ -24,6 +24,10 @@ const expenseIconChoices = <String, IconData>{
   'gheata': Icons.ac_unit,
   'momeli': Icons.phishing,
   'echipament': Icons.construction,
+  'undite': Icons.phishing,
+  'mulinete': Icons.album,
+  'umbrela': Icons.beach_access,
+  'scaun': Icons.chair_alt,
   'cazare': Icons.hotel,
   'cort': Icons.holiday_village,
   'permis': Icons.badge,
@@ -122,7 +126,11 @@ IconData expenseIcon(String category, [String name = '']) {
   if (has(['momeal', 'nada', 'rame', 'viermi', 'porumb', 'boilies'])) {
     return Icons.phishing;
   }
-  if (has(['carlig', 'fir', 'plumb', 'naluc', 'lanset', 'mulineta'])) {
+  if (has(['undit', 'lanset', 'varga', 'vergi'])) return Icons.phishing;
+  if (has(['mulinet'])) return Icons.album;
+  if (has(['umbrel', 'parasolar', 'brolly'])) return Icons.beach_access;
+  if (has(['scaun', 'fotoliu', 'sezut'])) return Icons.chair_alt;
+  if (has(['carlig', 'fir', 'plumb', 'naluc'])) {
     return Icons.construction;
   }
   if (has(['cazare', 'pensiune', 'cort', 'camera'])) return Icons.hotel;

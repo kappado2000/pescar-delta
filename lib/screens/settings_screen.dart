@@ -113,6 +113,34 @@ class SettingsScreen extends StatelessWidget {
               const ExpensePresetsScreen(),
             ),
           ]),
+          section('Cheltuieli', [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: DropdownButtonFormField<String?>(
+                initialValue:
+                    store.participants.any((p) => p.id == store.defaultPayerId)
+                    ? store.defaultPayerId
+                    : null,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Plătitor implicit',
+                  helperText:
+                      'Apare deja ales la orice cheltuială nouă '
+                      '(dacă e în echipa sezonului)',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Ultimul care a plătit'),
+                  ),
+                  for (final p in store.participants)
+                    DropdownMenuItem(value: p.id, child: Text(p.fullName)),
+                ],
+                onChanged: store.setDefaultPayer,
+              ),
+            ),
+          ]),
           section('Date', [
             tile(
               Icons.cloud_sync_outlined,

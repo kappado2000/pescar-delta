@@ -936,7 +936,7 @@ class _ExpenseEditScreenState extends State<ExpenseEditScreen> {
           id: newId(),
           description: '',
           amount: 0,
-          paidBy: widget.season.participantIds.first,
+          paidBy: context.read<AppStore>().payerFor(widget.season),
           common: true,
           sharedWith: List.of(widget.season.participantIds),
           date: DateTime.now(),

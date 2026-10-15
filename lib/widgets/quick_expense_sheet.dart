@@ -192,10 +192,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
   void initState() {
     super.initState();
     final store = context.read<AppStore>();
-    final last = store.lastPayerId;
-    _payer = widget.season.participantIds.contains(last)
-        ? last!
-        : widget.season.participantIds.first;
+    _payer = store.payerFor(widget.season);
     if (widget.initialPreset != null) _choose(widget.initialPreset!);
   }
 

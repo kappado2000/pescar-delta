@@ -288,7 +288,7 @@ class _SeasonHeader extends StatelessWidget {
               ),
               Text(
                 '📍 ${season.place.name} · '
-                '${DateFormat('d MMM').format(season.start)} – ${DateFormat('d MMM').format(season.end)}',
+                '${DateFormat('dd.MM.yyyy').format(season.start)} – ${DateFormat('dd.MM.yyyy').format(season.end)}',
               ),
               const SizedBox(height: 8),
               FutureBuilder<Forecast>(

@@ -130,7 +130,7 @@ class _SummaryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final fmt = DateFormat('d MMMM yyyy');
+    final fmt = DateFormat('dd.MM.yyyy');
     final tasks = buildPermitTasks(
       season: season,
       participants: store.participants,
@@ -354,7 +354,7 @@ class _PermitsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final fmt = DateFormat('d MMMM yyyy');
+    final fmt = DateFormat('dd.MM.yyyy');
     final text = Theme.of(context).textTheme;
     final tasks = buildPermitTasks(
       season: season,

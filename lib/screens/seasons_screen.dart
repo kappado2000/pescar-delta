@@ -10,7 +10,7 @@ import '../theme.dart';
 import '../models/place.dart';
 import '../widgets/place_picker.dart';
 
-final _dayMonth = DateFormat('d MMM');
+final _dayMonth = DateFormat('dd.MM.yyyy');
 
 class SeasonsScreen extends StatelessWidget {
   const SeasonsScreen({super.key});
@@ -314,7 +314,7 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.play_arrow),
                 title: const Text('Început'),
-                subtitle: Text(DateFormat('d MMMM yyyy').format(start)),
+                subtitle: Text(DateFormat('dd.MM.yyyy').format(start)),
                 onTap: () => pick(true),
               ),
               Wrap(
@@ -337,7 +337,7 @@ Future<void> showSeasonEditor(BuildContext context, {Season? season}) async {
                 title: Text(
                   'Sfârșit (${end.difference(start).inDays + 1} zile)',
                 ),
-                subtitle: Text(DateFormat('d MMMM yyyy').format(end)),
+                subtitle: Text(DateFormat('dd.MM.yyyy').format(end)),
                 onTap: () => pick(false),
               ),
               ListTile(

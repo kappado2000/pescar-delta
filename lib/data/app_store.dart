@@ -58,6 +58,23 @@ class AppStore extends ChangeNotifier {
   String? get lastPayerId => _box.get('lastPayerId') as String?;
   set lastPayerId(String? id) => _box.put('lastPayerId', id);
 
+  /// Plătitorul implicit ales în Setări (null = ultimul care a plătit).
+  String? get defaultPayerId => _box.get('defaultPayerId') as String?;
+
+  Future<void> setDefaultPayer(String? id) async {
+    await _box.put('defaultPayerId', id);
+    notifyListeners();
+  }
+
+  /// Cine apare ca plătitor la o cheltuială nouă în [season]: cel ales în
+  /// Setări, altfel ultimul care a plătit, altfel primul din echipă.
+  String payerFor(Season season) {
+    final ids = season.participantIds;
+    if (ids.contains(defaultPayerId)) return defaultPayerId!;
+    if (ids.contains(lastPayerId)) return lastPayerId!;
+    return ids.first;
+  }
+
   Future<void> init() async {
     await Hive.initFlutter();
     _box = await Hive.openBox(

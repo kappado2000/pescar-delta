@@ -69,14 +69,29 @@ ThemeData buildTheme(Brightness brightness) {
       ),
       margin: const EdgeInsets.symmetric(vertical: 5),
     ),
+    // bannerul de jos, inversat față de temă: bleumarin pe luminos,
+    // albastru deschis pe dark; iconița paginii deschise pe albastru intens
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: dark ? Sea.navy : Colors.white,
-      indicatorColor: dark ? Sea.deep : Sea.foam,
+      backgroundColor: dark ? const Color(0xFFBFE3F5) : Sea.navy,
+      indicatorColor: Sea.ocean,
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(
           color: s.contains(WidgetState.selected)
-              ? (dark ? Sea.aqua : Sea.deep)
-              : scheme.onSurfaceVariant,
+              ? Colors.white
+              : (dark ? Sea.navy : Colors.white70),
+        ),
+      ),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          fontSize: 12,
+          fontWeight: s.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: dark
+              ? Sea.navy
+              : (s.contains(WidgetState.selected)
+                    ? Colors.white
+                    : Colors.white70),
         ),
       ),
     ),

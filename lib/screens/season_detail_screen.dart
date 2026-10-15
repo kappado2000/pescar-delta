@@ -58,9 +58,11 @@ class SeasonDetailScreen extends StatelessWidget {
               onPressed: () => _delete(context, season),
             ),
           ],
+          // toate tab-urile încap pe lățimea ecranului, fără derulare
           bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
+            labelPadding: EdgeInsets.symmetric(horizontal: 2),
+            labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: TextStyle(fontSize: 12),
             tabs: [
               Tab(icon: Icon(Icons.dashboard_outlined), text: 'Rezumat'),
               Tab(icon: Icon(Icons.groups_outlined), text: 'Echipa'),
@@ -364,6 +366,15 @@ class _PermitsTab extends StatelessWidget {
     final pending = tasks
         .where((t) => season.purchased[t.key] != true)
         .toList();
+    // Durata permiselor: fundal alb, varianta bifată cu tenta ei mai închisă.
+    final scheme = Theme.of(context).colorScheme;
+    final segStyle = SegmentedButton.styleFrom(
+      backgroundColor: scheme.brightness == Brightness.light
+          ? Colors.white
+          : scheme.surfaceContainerHighest,
+      selectedBackgroundColor: scheme.secondaryContainer,
+      minimumSize: const Size(0, 44),
+    );
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
@@ -400,35 +411,40 @@ class _PermitsTab extends StatelessWidget {
         const SizedBox(height: 12),
         Text('Permis acces turist (plătit)', style: text.titleSmall),
         const SizedBox(height: 6),
-        SegmentedButton<AccessDuration>(
-          segments: [
-            for (final d in AccessDuration.values)
-              ButtonSegment(
-                value: d,
-                label: Text(d.label, textAlign: TextAlign.center),
-              ),
-          ],
-          selected: {season.accessDuration},
-          onSelectionChanged: (v) {
-            season.accessDuration = v.first;
-            season.syncPeriodWithPermits();
-            store.upsertSeason(season);
-          },
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<AccessDuration>(
+            style: segStyle,
+            segments: [
+              for (final d in AccessDuration.values)
+                ButtonSegment(value: d, label: Text(d.label)),
+            ],
+            selected: {season.accessDuration},
+            onSelectionChanged: (v) {
+              season.accessDuration = v.first;
+              season.syncPeriodWithPermits();
+              store.upsertSeason(season);
+            },
+          ),
         ),
         if (season.boatIds.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text('Permis ambarcațiune', style: text.titleSmall),
           const SizedBox(height: 6),
-          SegmentedButton<BoatDuration>(
-            segments: [
-              for (final d in BoatDuration.values)
-                ButtonSegment(value: d, label: Text(d.label)),
-            ],
-            selected: {season.boatDuration},
-            onSelectionChanged: (v) {
-              season.boatDuration = v.first;
-              store.upsertSeason(season);
-            },
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<BoatDuration>(
+              style: segStyle,
+              segments: [
+                for (final d in BoatDuration.values)
+                  ButtonSegment(value: d, label: Text(d.label)),
+              ],
+              selected: {season.boatDuration},
+              onSelectionChanged: (v) {
+                season.boatDuration = v.first;
+                store.upsertSeason(season);
+              },
+            ),
           ),
         ],
         const SizedBox(height: 20),

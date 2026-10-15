@@ -24,6 +24,8 @@ class HourPoint {
     required this.wind,
     required this.windDir,
     required this.precip,
+    this.gust = 0,
+    this.cloud = 0,
     this.tempSpread = 0,
     this.windSpread = 0,
     this.pressureSpread = 0,
@@ -37,6 +39,10 @@ class HourPoint {
 
   /// Precipitații în ora respectivă (mm).
   final double precip;
+
+  /// Rafale de vânt (km/h) și nebulozitate (%).
+  final double gust;
+  final double cloud;
 
   /// Diferența dintre cel mai mare și cel mai mic model.
   final double tempSpread;
@@ -61,6 +67,7 @@ class DayForecast {
     required this.moon,
     required this.certainty,
     required this.models,
+    this.reasons = const [],
   });
 
   final DateTime date;
@@ -78,6 +85,9 @@ class DayForecast {
 
   /// 0–1: cât de mult se potrivesc modelele între ele.
   final double certainty;
+
+  /// De ce are scorul acesta (ex. „presiune stabilă +2”).
+  final List<String> reasons;
   final int models;
 
   String get scoreLabel => switch (score) {
@@ -156,38 +166,127 @@ MoonInfo moonFor(DateTime date) {
 }
 
 /// Scor 0–10 pe baza presiunii, vântului, lunii și precipitațiilor.
-int fishingScore({
+bool _newOrFullMoon(MoonInfo moon) =>
+    min(
+      min(moon.age, _synodicMonth - moon.age),
+      (moon.age - _synodicMonth / 2).abs(),
+    ) <
+    2;
+
+String _signed(int v) => v > 0 ? '+$v' : '$v';
+
+/// Scorul zilei (0–10) și motivele lui.
+(int, List<String>) fishingScoreWhy({
   required double pressureChange,
   required double windMax,
   required double precip,
   required MoonInfo moon,
 }) {
-  var s = 5.0;
+  var s = 5;
+  final why = <String>[];
+  void add(int v, String text) {
+    s += v;
+    why.add('$text ${_signed(v)}');
+  }
+
   final dp = pressureChange;
   if (dp.abs() < 3) {
-    s += 2; // presiune stabilă
+    add(2, 'presiune stabilă');
   } else if (dp <= -3 && dp > -7) {
-    s += 1; // scădere lentă — peștele se hrănește înaintea frontului
+    add(1, 'presiunea scade lent');
   } else if (dp <= -7) {
-    s -= 2;
+    add(-2, 'presiunea scade brusc');
   } else if (dp >= 6) {
-    s -= 1; // creștere bruscă după front
+    add(-1, 'presiunea crește brusc');
   }
   if (windMax < 15) {
-    s += 1;
+    add(1, 'vânt slab');
   } else if (windMax > 35) {
-    s -= 2;
+    add(-2, 'vânt puternic');
   } else if (windMax > 25) {
-    s -= 1;
+    add(-1, 'vânt moderat');
   }
-  final distToNewOrFull = min(
-    min(moon.age, _synodicMonth - moon.age),
-    (moon.age - _synodicMonth / 2).abs(),
-  );
-  if (distToNewOrFull < 2) s += 1;
-  if (precip > 10) s -= 1;
-  return s.round().clamp(0, 10);
+  if (_newOrFullMoon(moon)) add(1, moon.name.toLowerCase());
+  if (precip > 10) add(-1, 'ploaie multă');
+  return (s.clamp(0, 10), why);
 }
+
+int fishingScore({
+  required double pressureChange,
+  required double windMax,
+  required double precip,
+  required MoonInfo moon,
+}) => fishingScoreWhy(
+  pressureChange: pressureChange,
+  windMax: windMax,
+  precip: precip,
+  moon: moon,
+).$1;
+
+/// Scorul unei ore (0–10) și motivele lui. [before3h] = ora de acum 3 ore.
+(int, List<String>) hourScore(
+  HourPoint h,
+  HourPoint? before3h,
+  DayForecast day,
+) {
+  var s = 5;
+  final why = <String>[];
+  void add(int v, String text) {
+    s += v;
+    why.add('$text ${_signed(v)}');
+  }
+
+  // presiunea în ultimele 3 ore
+  if (before3h != null) {
+    final dp = h.pressure - before3h.pressure;
+    if (dp.abs() < 1) {
+      add(1, 'presiune stabilă');
+    } else if (dp <= -1 && dp > -2.5) {
+      add(1, 'presiunea scade lent');
+    } else if (dp <= -2.5) {
+      add(-2, 'presiunea scade brusc');
+    } else if (dp >= 2) {
+      add(-1, 'presiunea crește brusc');
+    }
+  }
+  // vânt și rafale
+  if (h.wind < 10) {
+    add(1, 'vânt slab');
+  } else if (h.wind >= 30) {
+    add(-2, 'vânt puternic');
+  } else if (h.wind >= 20) {
+    add(-1, 'vânt moderat');
+  }
+  if (h.gust >= 45) add(-1, 'rafale puternice');
+  // ploaie
+  if (h.precip >= 2) add(-1, 'ploaie puternică');
+  // momentul zilei
+  final t = h.time;
+  final end = t.add(const Duration(minutes: 59));
+  final dawn =
+      end.isAfter(day.sunrise.subtract(const Duration(hours: 1))) &&
+      t.isBefore(day.sunrise.add(const Duration(hours: 2)));
+  final dusk =
+      end.isAfter(day.sunset.subtract(const Duration(hours: 1))) &&
+      t.isBefore(day.sunset.add(const Duration(hours: 1)));
+  final night =
+      t.isBefore(day.sunrise.subtract(const Duration(hours: 1))) ||
+      t.isAfter(day.sunset.add(const Duration(hours: 1)));
+  if (dawn) add(2, 'zori');
+  if (dusk) add(2, 'apus');
+  if (night && !dawn && !dusk) add(-1, 'noapte');
+  if (h.temp >= 28 && t.hour >= 12 && t.hour <= 16) add(-1, 'căldură mare');
+  if (_newOrFullMoon(day.moon)) add(1, day.moon.name.toLowerCase());
+  return (s.clamp(0, 10), why);
+}
+
+String rainLabel(double mm) => mm >= 4
+    ? 'puternică'
+    : mm >= 1
+    ? 'moderată'
+    : mm >= 0.1
+    ? 'slabă'
+    : '';
 
 double _median(List<double> v) {
   final s = v.toList()..sort();
@@ -206,7 +305,9 @@ class WeatherService {
       Uri.https('api.open-meteo.com', '/v1/forecast', {
         'latitude': '$lat',
         'longitude': '$lng',
-        'hourly': 'temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m,precipitation',
+        'hourly':
+            'temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m,'
+            'precipitation,wind_gusts_10m,cloud_cover',
         'daily': 'sunrise,sunset',
         'models': forecastModels.keys.join(','),
         'timezone': 'Europe/Bucharest',
@@ -234,6 +335,8 @@ class WeatherService {
       }
       final dirs = values('wind_direction_10m', i);
       final pr = values('precipitation', i);
+      final gu = values('wind_gusts_10m', i);
+      final cl = values('cloud_cover', i);
       hours.add(
         HourPoint(
           time: DateTime.parse(times[i]),
@@ -243,6 +346,8 @@ class WeatherService {
           // direcția: ECMWF (primul model) — mediana unghiurilor nu are sens
           windDir: dirs.isEmpty ? 0 : dirs.first,
           precip: pr.isEmpty ? 0 : _median(pr),
+          gust: gu.isEmpty ? 0 : _median(gu),
+          cloud: cl.isEmpty ? 0 : _median(cl),
           tempSpread: _spread(t),
           windSpread: _spread(w),
           pressureSpread: _spread(p),
@@ -312,12 +417,18 @@ class WeatherService {
           moon: moon,
           certainty: (1 - disagreement).clamp(0.0, 1.0),
           models: dh.map((x) => x.models).reduce(min),
-          score: fishingScore(
+          score: fishingScoreWhy(
             pressureChange: dp,
             windMax: windMax,
             precip: precip,
             moon: moon,
-          ),
+          ).$1,
+          reasons: fishingScoreWhy(
+            pressureChange: dp,
+            windMax: windMax,
+            precip: precip,
+            moon: moon,
+          ).$2,
         ),
       );
     }

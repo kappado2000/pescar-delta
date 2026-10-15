@@ -205,7 +205,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               value,
-              style: TextStyle(fontWeight: FontWeight.w700, color: color),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                color: color,
+              ),
             ),
             const Icon(Icons.chevron_right),
           ],

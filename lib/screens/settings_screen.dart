@@ -19,72 +19,120 @@ class SettingsScreen extends StatelessWidget {
     void open(Widget page) =>
         Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
+    final scheme = Theme.of(context).colorScheme;
     Widget header(String text) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
       child: Text(
         text.toUpperCase(),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          letterSpacing: 1.2,
-          color: Theme.of(context).colorScheme.primary,
+        style: Theme.of(context).textTheme.labelMedium
+            ?.copyWith(letterSpacing: 1.2, color: scheme.primary),
+      ),
+    );
+
+    /// Un card cu titlul secțiunii și rândurile ei, strânse între ele.
+    Widget section(String title, List<Widget> tiles) => Card(
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: scheme.onSurface.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                title.toUpperCase(),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
+              ),
+            ),
+            ...tiles,
+          ],
         ),
       ),
     );
+
+    Widget tile(IconData icon, String title, String subtitle, Widget page) =>
+        ListTile(
+          dense: true,
+          visualDensity: const VisualDensity(vertical: -3),
+          leading: Icon(icon),
+          title: Text(title, style: const TextStyle(fontSize: 15)),
+          subtitle: Text(subtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => open(page),
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Setări')),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          header('Oameni și bărci'),
-          ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('Participanți'),
-            subtitle: Text('${store.participants.length} · date, CNP, acte'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const ParticipantsScreen()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.directions_boat_outlined),
-            title: const Text('Bărci'),
-            subtitle: Text('${store.boats.length} · motorizare, acte'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const BoatsScreen()),
-          ),
-          header('Sezoane'),
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text('Toate sezoanele și istoricul'),
-            subtitle: Text('${store.seasons.length} sezoane'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const SeasonsScreen()),
-          ),
-          header('Liste'),
-          ListTile(
-            leading: const Icon(Icons.category_outlined),
-            title: const Text('Categorii necesar'),
-            subtitle: Text('${store.needCategories.length} categorii'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const NeedCategoriesScreen()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.bookmarks_outlined),
-            title: const Text('Presetări cheltuieli'),
-            subtitle: Text('${store.expensePresets.length} bunuri'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const ExpensePresetsScreen()),
-          ),
-          header('Date'),
-          ListTile(
-            leading: const Icon(Icons.cloud_sync_outlined),
-            title: const Text('Copie de siguranță'),
-            subtitle: const Text('Exportă / importă toate datele'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => open(const BackupScreen()),
-          ),
+          section('Oameni și bărci', [
+            tile(
+              Icons.people_outline,
+              'Participanți',
+              '${store.participants.length} · date, CNP, acte',
+              const ParticipantsScreen(),
+            ),
+            tile(
+              Icons.directions_boat_outlined,
+              'Bărci',
+              '${store.boats.length} · motorizare, acte',
+              const BoatsScreen(),
+            ),
+          ]),
+          section('Sezoane', [
+            tile(
+              Icons.history,
+              'Toate sezoanele și istoricul',
+              '${store.seasons.length} sezoane',
+              const SeasonsScreen(),
+            ),
+          ]),
+          section('Liste', [
+            tile(
+              Icons.category_outlined,
+              'Categorii necesar',
+              '${store.needCategories.length} categorii',
+              const NeedCategoriesScreen(),
+            ),
+            tile(
+              Icons.bookmarks_outlined,
+              'Presetări cheltuieli',
+              '${store.expensePresets.length} bunuri',
+              const ExpensePresetsScreen(),
+            ),
+          ]),
+          section('Date', [
+            tile(
+              Icons.cloud_sync_outlined,
+              'Copie de siguranță',
+              'Exportă / importă toate datele',
+              const BackupScreen(),
+            ),
+          ]),
           header('Aspect'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SegmentedButton<ThemeMode>(
+              // varianta aleasă cu o tentă mai închisă
+              style: SegmentedButton.styleFrom(
+                selectedBackgroundColor: Color.alphaBlend(
+                  scheme.primary.withValues(alpha: 0.35),
+                  scheme.secondaryContainer,
+                ),
+                selectedForegroundColor: scheme.onSurface,
+              ),
               segments: const [
                 ButtonSegment(
                   value: ThemeMode.light,

@@ -382,7 +382,7 @@ class _ExpenseTile extends StatelessWidget {
                       '${showPayer ? 'Achitată de ${store.participant(e.paidBy)?.fullName ?? '?'} · ' : ''}'
                       '${e.common ? 'comună, împărțită egal la ${e.sharedWith.length}' : 'cheltuială proprie'}',
                       style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: color),
+                          ?.copyWith(color: readable(context, color)),
                     ),
                   ],
                 ),

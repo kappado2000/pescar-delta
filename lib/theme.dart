@@ -198,3 +198,8 @@ Color numberColor(BuildContext context) =>
 /// Textul de pe bulina scorului: maro pe galben (alb nu se vedea), alb în rest.
 Color onScoreColor(int score) =>
     score >= 4 && score < 6 ? kNumberBrown : Colors.white;
+
+/// Culoare de text lizibilă: galbenul și portocaliul devin maro (nu se vedeau
+/// pe fundalurile deschise); restul culorilor rămân la fel.
+Color readable(BuildContext context, Color c) =>
+    c == Sea.sunset || c == Sea.ok ? numberColor(context) : c;

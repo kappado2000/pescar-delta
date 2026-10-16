@@ -458,7 +458,7 @@ class _QuickExpenseState extends State<_QuickExpense> {
               style: TextStyle(
                 fontSize: 40,
                 fontWeight: FontWeight.w800,
-                color: _amount.isEmpty ? Colors.grey : color,
+                color: _amount.isEmpty ? Colors.grey : readable(context, color),
               ),
             ),
           ),
@@ -617,8 +617,9 @@ class _BigTile extends StatelessWidget {
                 child: Text(
                   sub!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    // pe portocaliu albul nu se vede: maro
+                    color: color == Sea.sunset ? kNumberBrown : Colors.white,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),

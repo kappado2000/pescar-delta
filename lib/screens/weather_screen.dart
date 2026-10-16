@@ -402,8 +402,11 @@ class _DayDetail extends StatelessWidget {
                       day.certaintyLabel,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _certaintyColor(day.certainty),
+                        fontWeight: FontWeight.w700,
+                        // galbenul („Probabilă”) nu se vede ca text: maro
+                        color: _certaintyColor(day.certainty) == Sea.ok
+                            ? numberColor(context)
+                            : _certaintyColor(day.certainty),
                       ),
                     ),
                   ),

@@ -327,8 +327,8 @@ class _DayColumn extends StatelessWidget {
           backgroundColor: _scoreColor(day.score),
           child: Text(
             '${day.score}',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: onScoreColor(day.score),
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -368,8 +368,8 @@ class _DayDetail extends StatelessWidget {
           backgroundColor: _scoreColor(day.score),
           child: Text(
             '${day.score}',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: onScoreColor(day.score),
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -656,8 +656,8 @@ class _DayHoursScreen extends StatelessWidget {
                               backgroundColor: _scoreColor(score),
                               child: Text(
                                 '$score',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: onScoreColor(score),
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),

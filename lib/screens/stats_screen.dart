@@ -555,8 +555,10 @@ class _Tile extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: Theme.of(context).textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700, color: color),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: readable(context, color),
+                ),
               ),
               Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
@@ -779,7 +781,7 @@ class _AwardsCard extends StatelessWidget {
                 Text(
                   value,
                   style: text.titleMedium?.copyWith(
-                    color: Sea.sunset,
+                    color: numberColor(context),
                     fontWeight: FontWeight.w700,
                   ),
                 ),

@@ -140,7 +140,7 @@ class _SeasonCard extends StatelessWidget {
                     child: Text(
                       status,
                       style: TextStyle(
-                        color: statusColor,
+                        color: readable(context, statusColor),
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),

@@ -328,8 +328,8 @@ class _SeasonHeader extends StatelessWidget {
                               backgroundColor: fishingScoreColor(today.score),
                               child: Text(
                                 '${today.score}',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: onScoreColor(today.score),
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                 ),

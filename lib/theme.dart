@@ -185,3 +185,16 @@ ButtonStyle whiteSegmentStyle(BuildContext context) {
     minimumSize: const Size(0, 44),
   );
 }
+
+/// Maro pentru cifre pe fundal deschis (portocaliul/galbenul nu se vedeau).
+const kNumberBrown = Color(0xFF6B4423);
+
+/// Culoarea cifrelor (numerotare, sume): maro pe luminos, bej pe dark.
+Color numberColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? const Color(0xFFE6C08A)
+    : kNumberBrown;
+
+/// Textul de pe bulina scorului: maro pe galben (alb nu se vedea), alb în rest.
+Color onScoreColor(int score) =>
+    score >= 4 && score < 6 ? kNumberBrown : Colors.white;

@@ -360,7 +360,7 @@ class _ExpenseTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: color,
+                    color: numberColor(context),
                     fontSize: 15,
                   ),
                 ),
@@ -518,10 +518,10 @@ class _CommonList extends StatelessWidget {
                       width: 40,
                       child: Text(
                         '${i + 1}.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: Sea.ocean,
+                          color: numberColor(context),
                         ),
                       ),
                     ),
@@ -737,7 +737,7 @@ class _PerParticipant extends StatelessWidget {
             ),
             Text(
               lei(list.fold(0, (s, e) => s + e.amount)),
-              style: text.titleSmall?.copyWith(color: color),
+              style: text.titleSmall?.copyWith(color: numberColor(context)),
             ),
           ],
         ),
@@ -793,7 +793,13 @@ class _PerParticipant extends StatelessWidget {
             children: [
               SizedBox(
                 width: 40,
-                child: Text('${i + 1}.', style: text.bodySmall),
+                child: Text(
+                  '${i + 1}.',
+                  style: text.bodySmall?.copyWith(
+                    color: numberColor(context),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
               Expanded(
                 child: Text(
@@ -854,11 +860,11 @@ class _Settlement extends StatelessWidget {
           Card(
             child: ListTile(
               leading: CircleAvatar(
-                backgroundColor: Sea.sunset,
+                backgroundColor: Sea.sunset.withValues(alpha: 0.2),
                 child: Text(
                   '${i + 1}.',
-                  style: const TextStyle(
-                    color: Sea.navy,
+                  style: TextStyle(
+                    color: numberColor(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),

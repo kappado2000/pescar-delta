@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import '../data/app_store.dart';
 import '../models/expense.dart';
 import '../models/season.dart';
+import '../services/download/download.dart';
+import '../services/expense_pdf.dart';
 import '../theme.dart';
 import '../widgets/quick_expense_sheet.dart';
 import 'expense_presets_screen.dart';
@@ -53,7 +56,14 @@ class ExpensesScreen extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Trimite',
+              tooltip: 'Exportă PDF',
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              onPressed: season.expenses.isEmpty
+                  ? null
+                  : () => _exportPdf(store, season),
+            ),
+            IconButton(
+              tooltip: 'Trimite ca text',
               icon: const Icon(Icons.share),
               onPressed: season.expenses.isEmpty
                   ? null
@@ -102,6 +112,25 @@ class ExpensesScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Toate cheltuielile într-un PDF, prin meniul de partajare (Fișiere,
+  /// WhatsApp, e-mail…); pe web se descarcă.
+  Future<void> _exportPdf(AppStore store, Season season) async {
+    final bytes = await buildExpensesPdf(store, season);
+    final name =
+        'Cheltuieli_${season.title.replaceAll(' ', '_')}_'
+        '${DateFormat('yyyy-MM-dd').format(DateTime.now())}.pdf';
+    if (kIsWeb) {
+      await downloadFile(bytes, name, 'application/pdf');
+      return;
+    }
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, name: name, mimeType: 'application/pdf')],
+        fileNameOverrides: [name],
       ),
     );
   }

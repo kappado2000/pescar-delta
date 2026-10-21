@@ -7,6 +7,7 @@ import '../models/season.dart';
 import '../models/spot.dart';
 import '../services/location_service.dart';
 import '../services/permit_catalog.dart';
+import '../services/weather_clock.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
 import '../widgets/sky.dart';
@@ -36,7 +37,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadWeather(Season s) {
     if (_weatherFor == s.place.key) return;
     _weatherFor = s.place.key;
-    _weather = WeatherService.fetch(s.place.lat, s.place.lng);
+    _weather = context
+        .read<AppStore>()
+        .forecastFor(s.place.lat, s.place.lng)
+        .then((r) => r.forecast);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // vremea se reîncarcă singură (la 30 min, la ora nouă, la revenire)
+    weatherClock.addListener(_onClock);
+  }
+
+  void _onClock() {
+    if (mounted) setState(() => _weatherFor = null);
+  }
+
+  @override
+  void dispose() {
+    weatherClock.removeListener(_onClock);
+    super.dispose();
   }
 
   void _open(Season s, int tab) => Navigator.push(

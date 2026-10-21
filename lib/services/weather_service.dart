@@ -374,23 +374,29 @@ double _spread(List<double> v) =>
 class WeatherService {
   /// Prognoza pe 7 zile ca mediană a 5 modele (ECMWF, ICON, ARPEGE, GFS,
   /// UKMO); diferențele dintre ele dau gradul de siguranță.
-  static Future<Forecast> fetch(double lat, double lng) async {
-    final j = await getJsonWithRetry(
-      Uri.https('api.open-meteo.com', '/v1/forecast', {
-        'latitude': '$lat',
-        'longitude': '$lng',
-        'hourly':
-            'temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m,'
-            'precipitation,wind_gusts_10m,cloud_cover,weather_code,'
-            'precipitation_probability',
-        'daily': 'sunrise,sunset',
-        'models': forecastModels.keys.join(','),
-        'timezone': 'Europe/Bucharest',
-        'past_days': '1',
-        'forecast_days': '7',
-      }),
-    );
+  static Future<Forecast> fetch(double lat, double lng) async =>
+      parse(await fetchJson(lat, lng));
 
+  /// Răspunsul brut al serviciului (se păstrează pentru zonele fără semnal).
+  static Future<Map<String, dynamic>> fetchJson(double lat, double lng) =>
+      getJsonWithRetry(
+        Uri.https('api.open-meteo.com', '/v1/forecast', {
+          'latitude': '$lat',
+          'longitude': '$lng',
+          'hourly':
+              'temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m,'
+              'precipitation,wind_gusts_10m,cloud_cover,weather_code,'
+              'precipitation_probability',
+          'daily': 'sunrise,sunset',
+          'models': forecastModels.keys.join(','),
+          'timezone': 'Europe/Bucharest',
+          'past_days': '1',
+          'forecast_days': '7',
+        }),
+      );
+
+  /// Prognoza din răspunsul brut (proaspăt sau păstrat).
+  static Forecast parse(Map<String, dynamic> j) {
     final h = j['hourly'] as Map<String, dynamic>;
     final times = (h['time'] as List).cast<String>();
     List<double> values(String variable, int i) => [

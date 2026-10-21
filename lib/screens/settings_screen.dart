@@ -9,6 +9,9 @@ import 'need_categories_screen.dart';
 import 'participants_screen.dart';
 import 'seasons_screen.dart';
 
+/// Numărul build-ului (pus la compilare; gol în previzualizare).
+const _buildNumber = String.fromEnvironment('BUILD_NUMBER');
+
 /// Setările, grupate: oameni și bărci, liste, date, aspect.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -210,6 +213,16 @@ class SettingsScreen extends StatelessWidget {
               ],
               selected: {store.themeMode},
               onSelectionChanged: (v) => store.setThemeMode(v.first),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: Text(
+              _buildNumber.isEmpty
+                  ? 'Pescar Deltă · previzualizare'
+                  : 'Pescar Deltă · build $_buildNumber',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
         ],

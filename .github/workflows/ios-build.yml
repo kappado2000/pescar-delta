@@ -23,7 +23,7 @@ jobs:
       - name: Build unsigned iOS app
         # The run number as build number: every IPA is a genuinely new
         # version, so Sideloadly/iOS always replaces the installed one.
-        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }} --dart-define=BUILD_NUMBER=${{ github.run_number }}
 
       - name: Package as unsigned IPA
         run: |

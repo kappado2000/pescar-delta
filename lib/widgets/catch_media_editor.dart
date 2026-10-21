@@ -5,10 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../data/app_store.dart';
 import '../models/catch_entry.dart';
+import '../services/download/download.dart';
 import '../theme.dart';
 
 /// Pozele și video-urile unei capturi: fotografiezi / filmezi cu telefonul
@@ -19,12 +21,17 @@ class CatchMediaEditor extends StatefulWidget {
     required this.catchId,
     required this.media,
     this.onCaptured,
+    this.onChanged,
   });
   final String catchId;
   final List<CatchMedia> media;
 
   /// Apelat după o poză / un video nou (ex. ca să se ia poziția GPS).
   final VoidCallback? onCaptured;
+
+  /// Apelat după ce lista s-a schimbat (poze adăugate / șterse), ca captura
+  /// să se salveze imediat — nu doar la „Salvează”.
+  final VoidCallback? onChanged;
 
   @override
   State<CatchMediaEditor> createState() => _CatchMediaEditorState();
@@ -52,27 +59,38 @@ class _CatchMediaEditorState extends State<CatchMediaEditor> {
     setState(() => _busy = true);
     var skippedVideos = 0;
     for (final f in files) {
-      final bytes = await f.readAsBytes();
-      if (_isVideoFile(f)) {
-        final dot = f.name.lastIndexOf('.');
-        final path = await store.saveCatchVideo(
-          widget.catchId,
-          bytes,
-          dot > 0 ? f.name.substring(dot) : '.mp4',
-        );
-        if (path == null) {
+      final video = _isVideoFile(f);
+      final dot = f.name.lastIndexOf('.');
+      final ext = dot > 0
+          ? f.name.substring(dot).toLowerCase()
+          : (video ? '.mp4' : '.jpg');
+      if (kIsWeb) {
+        // pe web nu există fișiere: pozele rămân ca text, video-urile nu
+        if (video) {
           skippedVideos++;
           continue;
         }
-        widget.media.add(CatchMedia(id: newId(), isVideo: true, path: path));
-      } else {
         widget.media.add(
-          CatchMedia(id: newId(), isVideo: false, base64: base64Encode(bytes)),
+          CatchMedia(
+            id: newId(),
+            isVideo: false,
+            base64: base64Encode(await f.readAsBytes()),
+          ),
         );
+        continue;
       }
+      // pe telefon: fișierul se copiază direct în media/ (fără să treacă
+      // tot prin memorie — un video lung închidea aplicația)
+      final path = await store.saveCatchMedia(
+        widget.catchId,
+        sourcePath: f.path,
+        ext: ext,
+      );
+      widget.media.add(CatchMedia(id: newId(), isVideo: video, path: path));
     }
     if (!mounted) return;
     setState(() => _busy = false);
+    widget.onChanged?.call();
     if (skippedVideos > 0) {
       messenger.showSnackBar(
         const SnackBar(
@@ -119,6 +137,7 @@ class _CatchMediaEditorState extends State<CatchMediaEditor> {
           onDelete: (m) async {
             await context.read<AppStore>().deleteMediaFile(m.path);
             setState(() => widget.media.remove(m));
+            widget.onChanged?.call();
           },
         ),
       ),
@@ -194,6 +213,12 @@ class _CatchMediaEditorState extends State<CatchMediaEditor> {
               icon: const Icon(Icons.photo_library),
               label: const Text('Galerie'),
             ),
+            if (media.isNotEmpty)
+              IconButton(
+                tooltip: 'Exportă pozele și video-urile',
+                onPressed: _busy ? null : () => exportMedia(context, media),
+                icon: const Icon(Icons.ios_share),
+              ),
           ],
         ),
       ],
@@ -208,9 +233,7 @@ class MediaThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!media.isVideo && media.base64 != null) {
-      return Image.memory(base64Decode(media.base64!), fit: BoxFit.cover);
-    }
+    if (!media.isVideo) return _photo(context, media, BoxFit.cover);
     return Container(
       decoration: const BoxDecoration(gradient: Sea.headerGradient),
       child: const Center(
@@ -250,6 +273,12 @@ class _MediaViewerState extends State<MediaViewer> {
         foregroundColor: Colors.white,
         title: Text('${_index + 1} / ${items.length}'),
         actions: [
+          if (items.isNotEmpty)
+            IconButton(
+              tooltip: 'Exportă',
+              icon: const Icon(Icons.ios_share),
+              onPressed: () => exportMedia(context, [items[_index]]),
+            ),
           if (widget.onDelete != null && items.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline),
@@ -275,7 +304,7 @@ class _MediaViewerState extends State<MediaViewer> {
           if (m.isVideo) return _VideoPage(key: ValueKey(m.id), media: m);
           return InteractiveViewer(
             maxScale: 6,
-            child: Center(child: Image.memory(base64Decode(m.base64!))),
+            child: Center(child: _photo(context, m, BoxFit.contain)),
           );
         },
       ),
@@ -357,4 +386,68 @@ class _VideoPageState extends State<_VideoPage> {
       ),
     );
   }
+}
+
+/// O poză: din fișier (telefon) sau din text (web / copii vechi).
+Widget _photo(BuildContext context, CatchMedia m, BoxFit fit) {
+  Widget broken(_, _, _) => Container(
+    color: Sea.foam,
+    child: const Center(child: Icon(Icons.broken_image_outlined, size: 36)),
+  );
+  if (m.base64 != null) {
+    return Image.memory(
+      base64Decode(m.base64!),
+      fit: fit,
+      errorBuilder: broken,
+    );
+  }
+  final file = context.read<AppStore>().mediaFile(m.path);
+  if (file == null) return broken(null, null, null);
+  return Image.file(file, fit: fit, errorBuilder: broken);
+}
+
+/// Exportă poze / video-uri prin meniul de partajare al telefonului (de
+/// acolo: Salvează în Poze, Fișiere, WhatsApp…). Pe web le descarcă.
+Future<void> exportMedia(BuildContext context, List<CatchMedia> items) async {
+  final store = context.read<AppStore>();
+  final messenger = ScaffoldMessenger.of(context);
+  final files = <XFile>[];
+  final names = <String>[];
+  var n = 0;
+  for (final m in items) {
+    n++;
+    final file = store.mediaFile(m.path);
+    if (file != null && file.existsSync()) {
+      final ext = file.path.split('.').last.toLowerCase();
+      names.add('captura_$n.$ext');
+      files.add(
+        XFile(
+          file.path,
+          mimeType: m.isVideo
+              ? (ext == 'mov' ? 'video/quicktime' : 'video/mp4')
+              : 'image/jpeg',
+        ),
+      );
+    } else if (m.base64 != null) {
+      final bytes = base64Decode(m.base64!);
+      final name = 'captura_$n.jpg';
+      if (kIsWeb) {
+        await downloadFile(bytes, name, 'image/jpeg');
+        continue;
+      }
+      names.add(name);
+      files.add(XFile.fromData(bytes, name: name, mimeType: 'image/jpeg'));
+    }
+  }
+  if (files.isEmpty) {
+    if (!kIsWeb) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Nu am găsit fișierele de exportat.')),
+      );
+    }
+    return;
+  }
+  await SharePlus.instance.share(
+    ShareParams(files: files, fileNameOverrides: names),
+  );
 }

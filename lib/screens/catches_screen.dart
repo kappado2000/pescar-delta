@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -128,13 +126,12 @@ class _CatchCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (c.photoBase64 != null)
-                    Image.memory(
-                      base64Decode(c.photoBase64!),
-                      fit: BoxFit.cover,
+                  if (c.media.isNotEmpty)
+                    MediaThumb(
+                      media:
+                          c.media.where((m) => !m.isVideo).firstOrNull ??
+                          c.media.first,
                     )
-                  else if (c.media.isNotEmpty)
-                    MediaThumb(media: c.media.first)
                   else
                     Container(
                       color: speciesColor(c.species).withValues(alpha: 0.15),
@@ -397,6 +394,7 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
             onCaptured: () {
               if (_lat == null && !_locating) _locate();
             },
+            onChanged: _autoSave,
           ),
           const SizedBox(height: 8),
 
@@ -632,6 +630,13 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
     if (_c.weather == null && fresh && wLat != null && wLng != null) {
       _c.weather = await WeatherService.snapshot(wLat, wLng);
     }
+    _apply(species);
+    store.lastCatcherId = _participantId;
+    await store.upsertCatch(_c);
+    if (mounted) Navigator.pop(context);
+  }
+
+  void _apply(String species) {
     _c
       ..species = species
       ..weightKg = _parse(_weight.text)
@@ -646,9 +651,32 @@ class _CatchEditScreenState extends State<CatchEditScreen> {
       ..media = _media
       ..released = _released
       ..notes = _notes.text.trim();
-    store.lastCatcherId = _participantId;
+  }
+
+  bool _autoSaved = false;
+
+  /// După fiecare poză / video, captura se salvează imediat: dacă telefonul
+  /// închide aplicația (memorie, apel), poza nu se mai pierde.
+  Future<void> _autoSave() async {
+    if (_participantId == null || _saving) return;
+    final store = context.read<AppStore>();
+    final messenger = ScaffoldMessenger.of(context);
+    final isNew = !store.catches.any((c) => c.id == _c.id);
+    _apply(
+      _species == 'Altă specie' && _otherSpecies.text.trim().isNotEmpty
+          ? _otherSpecies.text.trim()
+          : _species,
+    );
     await store.upsertCatch(_c);
-    if (mounted) Navigator.pop(context);
+    if (isNew && !_autoSaved && mounted) {
+      _autoSaved = true;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Captura s-a salvat automat împreună cu poza.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 

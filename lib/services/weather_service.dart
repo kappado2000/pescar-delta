@@ -26,6 +26,8 @@ class HourPoint {
     required this.precip,
     this.gust = 0,
     this.cloud = 0,
+    this.code = 0,
+    this.precipProb,
     this.tempSpread = 0,
     this.windSpread = 0,
     this.pressureSpread = 0,
@@ -43,6 +45,12 @@ class HourPoint {
   /// Rafale de vânt (km/h) și nebulozitate (%).
   final double gust;
   final double cloud;
+
+  /// Starea cerului (cod WMO, consensul modelelor): 0 senin … 95 furtună.
+  final int code;
+
+  /// Probabilitatea de ploaie (%), unde modelele o dau.
+  final double? precipProb;
 
   /// Diferența dintre cel mai mare și cel mai mic model.
   final double tempSpread;
@@ -67,8 +75,17 @@ class DayForecast {
     required this.moon,
     required this.certainty,
     required this.models,
+    this.code = 0,
+    this.precipProbMax,
     this.reasons = const [],
   });
+
+  /// Starea cerului peste zi (cod WMO) — ce o să vezi afară între răsărit
+  /// și apus.
+  final int code;
+
+  /// Cea mai mare probabilitate de ploaie din zi (%).
+  final double? precipProbMax;
 
   final DateTime date;
   final double tMin;
@@ -294,6 +311,63 @@ double _median(List<double> v) {
   return s.length.isOdd ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+/// Starea cerului dintr-o oră, din codurile WMO ale modelelor plus mediana
+/// ploii și a norilor (un singur model nu poate „câștiga” singur).
+int skyCode({
+  required List<int> codes,
+  required double precip,
+  required double cloud,
+  required double temp,
+}) {
+  int votes(bool Function(int) f) => codes.where(f).length;
+  final half = (codes.length / 2).ceil().clamp(1, 99);
+  if (codes.isNotEmpty && votes((c) => c >= 95) >= max(2, half - 1)) {
+    return 95;
+  }
+  if (precip >= 0.1) {
+    final snow = votes((c) => (c >= 71 && c <= 77) || c == 85 || c == 86);
+    if (snow >= half && temp < 2) {
+      return precip >= 4 ? 75 : (precip >= 1 ? 73 : 71);
+    }
+    final showers = votes((c) => c >= 80 && c <= 82);
+    final rain = votes((c) => c >= 61 && c <= 67);
+    final drizzle = votes((c) => c >= 51 && c <= 57);
+    if (drizzle > rain && drizzle >= showers && precip < 0.5) {
+      return precip >= 0.3 ? 53 : 51;
+    }
+    if (showers > rain) return precip >= 4 ? 82 : (precip >= 1 ? 81 : 80);
+    return precip >= 4 ? 65 : (precip >= 1 ? 63 : 61);
+  }
+  if (codes.isNotEmpty && votes((c) => c == 45 || c == 48) >= half) return 45;
+  if (cloud < 20) return 0;
+  if (cloud < 50) return 1;
+  if (cloud < 85) return 2;
+  return 3;
+}
+
+/// Starea zilei din orele dintre răsărit și apus: furtuna și ploaia au
+/// prioritate, altfel norii în medie.
+int daySkyCode(List<HourPoint> daylight) {
+  if (daylight.isEmpty) return 0;
+  if (daylight.any((h) => h.code >= 95)) return 95;
+  final wet = daylight.where((h) => h.code >= 51).toList();
+  final rainSum = wet.fold<double>(0, (s, h) => s + h.precip);
+  if (wet.length >= 2 || rainSum >= 1) {
+    // ora cu cea mai multă ploaie dă tipul (ploaie / averse / ninsoare)
+    final code = wet.reduce((a, b) => b.precip > a.precip ? b : a).code;
+    // burnița care ține toată ziua și adună ≥ 2 mm e de fapt ploaie
+    if (code >= 51 && code <= 57 && rainSum >= 2) return 61;
+    return code;
+  }
+  if (daylight.where((h) => h.code == 45).length >= 3) return 45;
+  final cloud =
+      daylight.fold<double>(0, (s, h) => s + h.cloud) / daylight.length;
+  if (cloud < 20) return 0;
+  if (cloud < 50) return 1;
+  if (cloud < 85) return 2;
+  return 3;
+}
+
 double _spread(List<double> v) =>
     v.length < 2 ? 0 : v.reduce(max) - v.reduce(min);
 
@@ -307,7 +381,8 @@ class WeatherService {
         'longitude': '$lng',
         'hourly':
             'temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m,'
-            'precipitation,wind_gusts_10m,cloud_cover',
+            'precipitation,wind_gusts_10m,cloud_cover,weather_code,'
+            'precipitation_probability',
         'daily': 'sunrise,sunset',
         'models': forecastModels.keys.join(','),
         'timezone': 'Europe/Bucharest',
@@ -337,6 +412,10 @@ class WeatherService {
       final pr = values('precipitation', i);
       final gu = values('wind_gusts_10m', i);
       final cl = values('cloud_cover', i);
+      final pp = values('precipitation_probability', i);
+      final codes = values('weather_code', i).map((v) => v.round()).toList();
+      final precipM = pr.isEmpty ? 0.0 : _median(pr);
+      final cloudM = cl.isEmpty ? 0.0 : _median(cl);
       hours.add(
         HourPoint(
           time: DateTime.parse(times[i]),
@@ -345,9 +424,16 @@ class WeatherService {
           wind: _median(w),
           // direcția: ECMWF (primul model) — mediana unghiurilor nu are sens
           windDir: dirs.isEmpty ? 0 : dirs.first,
-          precip: pr.isEmpty ? 0 : _median(pr),
+          precip: precipM,
           gust: gu.isEmpty ? 0 : _median(gu),
-          cloud: cl.isEmpty ? 0 : _median(cl),
+          cloud: cloudM,
+          code: skyCode(
+            codes: codes,
+            precip: precipM,
+            cloud: cloudM,
+            temp: _median(t),
+          ),
+          precipProb: pp.isEmpty ? null : _median(pp),
           tempSpread: _spread(t),
           windSpread: _spread(w),
           pressureSpread: _spread(p),
@@ -394,6 +480,20 @@ class WeatherService {
       final windMax = dh.map((x) => x.wind).reduce(max);
       final precip = dh.fold<double>(0, (s, x) => s + x.precip);
       final moon = moonFor(date.add(const Duration(hours: 12)));
+      final sunrise =
+          DateTime.tryParse(sunrises[i]) ?? date.add(const Duration(hours: 7));
+      final sunset =
+          DateTime.tryParse(sunsets[i]) ?? date.add(const Duration(hours: 19));
+      final daylight = dh
+          .where(
+            (x) =>
+                !x.time.isBefore(
+                  sunrise.subtract(const Duration(minutes: 59)),
+                ) &&
+                x.time.isBefore(sunset),
+          )
+          .toList();
+      final probs = dh.map((x) => x.precipProb).whereType<double>();
       // siguranța scade cu împrăștierea modelelor (°C, km/h, hPa)
       final disagreement =
           (avg((x) => x.tempSpread) / 6 +
@@ -407,12 +507,10 @@ class WeatherService {
           tMax: dh.map((x) => x.temp).reduce(max),
           windMax: windMax,
           precip: precip,
-          sunrise:
-              DateTime.tryParse(sunrises[i]) ??
-              date.add(const Duration(hours: 7)),
-          sunset:
-              DateTime.tryParse(sunsets[i]) ??
-              date.add(const Duration(hours: 19)),
+          sunrise: sunrise,
+          sunset: sunset,
+          code: daySkyCode(daylight),
+          precipProbMax: probs.isEmpty ? null : probs.reduce(max),
           pressureChange: dp,
           moon: moon,
           certainty: (1 - disagreement).clamp(0.0, 1.0),

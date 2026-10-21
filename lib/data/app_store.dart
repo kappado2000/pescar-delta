@@ -99,6 +99,20 @@ class AppStore extends ChangeNotifier {
     _load('seasons', seasons, Season.fromJson);
     _load('catches', catches, CatchEntry.fromJson);
     if (!kIsWeb) docsPath = await _docsDir();
+    // o singură dată: pescarul implicit la capturi = Ionescu Mihai Andrei
+    if (_box.get('defaultCatcherSeeded') != true) {
+      final implicit = participants
+          .where(
+            (p) =>
+                p.nume.trim().toLowerCase() == 'ionescu' &&
+                p.prenume.toLowerCase().contains('mihai'),
+          )
+          .firstOrNull;
+      if (implicit != null && defaultCatcherId == null) {
+        await _box.put('defaultCatcherId', implicit.id);
+      }
+      await _box.put('defaultCatcherSeeded', true);
+    }
     if (await _photosToFiles()) await _save('catches', catches);
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);

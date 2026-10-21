@@ -98,6 +98,8 @@ class AppStore extends ChangeNotifier {
     _load('boats', boats, Boat.fromJson);
     _load('seasons', seasons, Season.fromJson);
     _load('catches', catches, CatchEntry.fromJson);
+    if (!kIsWeb) docsPath = await _docsDir();
+    if (await _photosToFiles()) await _save('catches', catches);
     _load('spots', spots, Spot.fromJson);
     _load('permitFiles', permitFiles, PermitFile.fromJson);
     _load('expensePresets', expensePresets, ExpensePreset.fromJson);
@@ -426,19 +428,56 @@ class AppStore extends ChangeNotifier {
     await _save('catches', catches);
   }
 
-  /// Copiază un video în `media/<captură>/` și întoarce calea relativă.
-  /// Pe web nu se pot păstra fișiere video → null.
-  Future<String?> saveCatchVideo(
-    String catchId,
-    Uint8List bytes,
-    String ext,
-  ) async {
+  /// Folderul de documente al aplicației (null pe web), reținut la pornire
+  /// ca miniaturile să poată citi fișierele imediat.
+  String? docsPath;
+
+  /// Copiază o poză / un video în `media/<captură>/` și întoarce calea
+  /// relativă. Fișierul se copiază direct de pe disc (un video lung nu mai
+  /// trece prin memorie). Pe web nu există fișiere → null.
+  Future<String?> saveCatchMedia(
+    String catchId, {
+    String? sourcePath,
+    Uint8List? bytes,
+    required String ext,
+  }) async {
     if (kIsWeb) return null;
     final relative = 'media/$catchId/${newId()}$ext';
     final file = File('${await _docsDir()}/$relative');
     await file.parent.create(recursive: true);
-    await file.writeAsBytes(bytes);
+    if (sourcePath != null) {
+      await File(sourcePath).copy(file.path);
+    } else {
+      await file.writeAsBytes(bytes!);
+    }
     return relative;
+  }
+
+  /// Fișierul unei poze / unui video (sau null pe web / fără cale).
+  File? mediaFile(String? relative) =>
+      kIsWeb || relative == null || docsPath == null
+      ? null
+      : File('$docsPath/$relative');
+
+  /// Pozele vechi, ținute ca text în baza de date, devin fișiere în
+  /// `media/` — baza rămâne mică și salvarea nu mai cade la multe poze.
+  Future<bool> _photosToFiles() async {
+    if (kIsWeb) return false;
+    var changed = false;
+    for (final c in catches) {
+      for (var i = 0; i < c.media.length; i++) {
+        final m = c.media[i];
+        if (m.isVideo || m.base64 == null) continue;
+        final path = await saveCatchMedia(
+          c.id,
+          bytes: base64Decode(m.base64!),
+          ext: '.jpg',
+        );
+        c.media[i] = CatchMedia(id: m.id, isVideo: false, path: path);
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   Future<String?> mediaFilePath(String? relative) async =>
@@ -497,7 +536,15 @@ class AppStore extends ChangeNotifier {
             ...c.toJson(),
             'media': [
               for (final m in c.media)
-                if (!m.isVideo) m.toJson(),
+                if (!m.isVideo)
+                  if (m.base64 != null)
+                    m.toJson()
+                  else if (await mediaFile(m.path)?.readAsBytes() case final b?)
+                    CatchMedia(
+                      id: m.id,
+                      isVideo: false,
+                      base64: base64Encode(b),
+                    ).toJson(),
             ],
           },
       ],
@@ -544,6 +591,7 @@ class AppStore extends ChangeNotifier {
     catches
       ..clear()
       ..addAll(maps('catches').map(CatchEntry.fromJson));
+    await _photosToFiles();
     spots
       ..clear()
       ..addAll(maps('spots').map(Spot.fromJson));

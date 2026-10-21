@@ -11,6 +11,13 @@ import '../models/season.dart';
 
 final _lei = NumberFormat('#,##0', 'ro');
 String _sum(double v) => '${_lei.format(v.round())} lei';
+
+/// Diferența de decont: +80 lei (primește) / −80 lei (dă).
+String _diff(double v) => v.round() == 0
+    ? '0 lei (achitat)'
+    : v > 0
+    ? '+${_sum(v)} (primește)'
+    : '−${_sum(-v)} (dă)';
 final _when = DateFormat('dd.MM.yyyy HH:mm');
 
 /// Toate cheltuielile sezonului într-un PDF: lista numerotată, totalurile,
@@ -32,6 +39,21 @@ Future<Uint8List> buildExpensesPdf(AppStore store, Season season) async {
       .where((e) => e.common)
       .fold<double>(0, (s, e) => s + e.amount);
   final balances = balancesOf(season.expenses, season.participantIds);
+  final ids = balances.keys.toList();
+  final commonPaid = <String, double>{};
+  final ownPaid = <String, double>{};
+  for (final e in list) {
+    final m = e.common ? commonPaid : ownPaid;
+    m[e.paidBy] = (m[e.paidBy] ?? 0) + e.amount;
+  }
+  // toate cheltuielile comune împărțite la aceiași oameni?
+  final equalSplit = list
+      .where((e) => e.common)
+      .every(
+        (e) =>
+            e.sharedWith.toSet().containsAll(ids) &&
+            e.sharedWith.length == ids.length,
+      );
   final transfers = settle(balances);
 
   const navy = PdfColor.fromInt(0xFF0B3C5D);
@@ -146,21 +168,41 @@ Future<Uint8List> buildExpensesPdf(AppStore store, Season season) async {
             6: const pw.FixedColumnWidth(56),
           },
         ),
-        heading('Pe participant'),
+        heading('Decontul cheltuielilor comune'),
+        pw.Text(
+          equalSplit
+              ? 'Total cheltuieli comune: ${_sum(common)}, împărțite egal la '
+                    '${ids.length} participanți = ${_sum(common / ids.length)} '
+                    'de fiecare.'
+              : 'Total cheltuieli comune: ${_sum(common)}, fiecare împărțită '
+                    'egal între cei care au luat parte la ea.',
+          style: const pw.TextStyle(fontSize: 10),
+        ),
+        pw.SizedBox(height: 6),
         pw.TableHelper.fromTextArray(
-          headers: ['Participant', 'A plătit', 'Partea lui', 'Rezultat'],
+          headers: [
+            'Participant',
+            'A achitat la comun',
+            'Partea lui din comun',
+            'Diferență (decont)',
+            'Cheltuieli proprii',
+          ],
           data: [
-            for (final b in balances.values)
+            for (final id in ids)
               [
-                name(b.participantId),
-                _sum(b.paid),
-                _sum(b.owes),
-                b.balance.abs() < 0.5
-                    ? 'achitat'
-                    : b.balance > 0
-                    ? 'de primit ${_sum(b.balance)}'
-                    : 'dator cu ${_sum(-b.balance)}',
+                name(id),
+                _sum(commonPaid[id] ?? 0),
+                _sum(balances[id]?.commonShare ?? 0),
+                _diff((commonPaid[id] ?? 0) - (balances[id]?.commonShare ?? 0)),
+                _sum(ownPaid[id] ?? 0),
               ],
+            [
+              'TOTAL',
+              _sum(common),
+              _sum(common),
+              '0 lei',
+              _sum(total - common),
+            ],
           ],
           headerStyle: pw.TextStyle(
             font: bold,
@@ -170,6 +212,19 @@ Future<Uint8List> buildExpensesPdf(AppStore store, Season season) async {
           headerDecoration: const pw.BoxDecoration(color: navy),
           cellStyle: const pw.TextStyle(fontSize: 9),
           oddRowDecoration: const pw.BoxDecoration(color: light),
+          cellAlignments: {
+            1: pw.Alignment.centerRight,
+            2: pw.Alignment.centerRight,
+            3: pw.Alignment.centerRight,
+            4: pw.Alignment.centerRight,
+          },
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          'Diferența = cât a achitat la comun − partea lui. Plus: primește '
+          'banii înapoi; minus: are de dat. Cheltuielile proprii nu intră în '
+          'decont.',
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
         ),
         heading('Decontare'),
         if (transfers.isEmpty)

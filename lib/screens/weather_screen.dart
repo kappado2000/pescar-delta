@@ -9,6 +9,7 @@ import '../models/place.dart';
 import '../models/season.dart';
 import '../models/weather_day.dart';
 import '../services/location_service.dart';
+import '../services/weather_clock.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
 import '../widgets/sky.dart';
@@ -31,10 +32,25 @@ class _WeatherScreenState extends State<WeatherScreen> {
   Future<Forecast>? _future;
   String _placeName = '';
 
+  /// Când s-a luat prognoza afișată și dacă e cea păstrată (fără semnal).
+  DateTime? _updatedAt;
+  bool _offline = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+    weatherClock.addListener(_onClock);
+  }
+
+  void _onClock() {
+    if (mounted) _load();
+  }
+
+  @override
+  void dispose() {
+    weatherClock.removeListener(_onClock);
+    super.dispose();
   }
 
   Place _seasonPlace(AppStore store) =>
@@ -65,7 +81,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
     if (!mounted) return;
     setState(() {
       _placeName = name;
-      _future = WeatherService.fetch(place.lat, place.lng);
+      _future = store.forecastFor(place.lat, place.lng).then((r) {
+        if (mounted) {
+          setState(() {
+            _updatedAt = r.at;
+            _offline = r.offline;
+          });
+        }
+        return r.forecast;
+      });
     });
     store.collectWeather();
   }
@@ -135,7 +159,35 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   if (!snap.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  return _ForecastView(forecast: snap.data!, place: _placeName);
+                  return Column(
+                    children: [
+                      if (_updatedAt != null)
+                        Container(
+                          width: double.infinity,
+                          color: _offline
+                              ? Sea.bad.withValues(alpha: 0.12)
+                              : Sea.ocean.withValues(alpha: 0.06),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          child: Text(
+                            _offline
+                                ? 'Fără semnal — prognoza de la '
+                                      '${DateFormat('d MMM, HH:mm').format(_updatedAt!)}'
+                                : 'Actualizată automat · ultima dată la '
+                                      '${DateFormat('HH:mm').format(_updatedAt!)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      Expanded(
+                        child: _ForecastView(
+                          forecast: snap.data!,
+                          place: _placeName,
+                        ),
+                      ),
+                    ],
+                  );
                 },
               ),
             ),

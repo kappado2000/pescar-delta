@@ -18,6 +18,7 @@ import '../models/season.dart';
 import '../models/spot.dart';
 import '../models/weather_day.dart';
 import '../services/weather_collector.dart';
+import '../services/weather_service.dart';
 
 const _uuid = Uuid();
 String newId() => _uuid.v4();
@@ -431,6 +432,33 @@ class AppStore extends ChangeNotifier {
     } finally {
       collectingWeather = false;
       notifyListeners();
+    }
+  }
+
+  // ---------- Prognoza (cu ultima variantă păstrată) ----------
+  /// Prognoza pentru un loc și ora la care a fost luată. Fără semnal se
+  /// întoarce ultima prognoză păstrată pentru locul respectiv.
+  Future<({Forecast forecast, DateTime at, bool offline})> forecastFor(
+    double lat,
+    double lng,
+  ) async {
+    final key = 'forecast:${lat.toStringAsFixed(2)},${lng.toStringAsFixed(2)}';
+    try {
+      final j = await WeatherService.fetchJson(lat, lng);
+      final now = DateTime.now();
+      await _box.put(key, jsonEncode({'at': now.toIso8601String(), 'json': j}));
+      return (forecast: WeatherService.parse(j), at: now, offline: false);
+    } catch (_) {
+      final raw = _box.get(key) as String?;
+      if (raw == null) rethrow;
+      final saved = jsonDecode(raw) as Map<String, dynamic>;
+      return (
+        forecast: WeatherService.parse(
+          Map<String, dynamic>.from(saved['json'] as Map),
+        ),
+        at: DateTime.parse(saved['at'] as String),
+        offline: true,
+      );
     }
   }
 

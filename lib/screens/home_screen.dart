@@ -9,6 +9,7 @@ import '../services/location_service.dart';
 import '../services/permit_catalog.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/sky.dart';
 import '../widgets/thermo.dart';
 import '../widgets/delta_scene.dart';
 import '../widgets/open_problems.dart';
@@ -312,6 +313,18 @@ class _SeasonHeader extends StatelessWidget {
                     TextSpan(
                       style: style,
                       children: [
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: SkyLabel(
+                            code: f.current.code,
+                            night:
+                                today != null &&
+                                (DateTime.now().isBefore(today.sunrise) ||
+                                    DateTime.now().isAfter(today.sunset)),
+                            style: style,
+                          ),
+                        ),
+                        const TextSpan(text: ' · '),
                         thermoSpan(),
                         TextSpan(
                           text:

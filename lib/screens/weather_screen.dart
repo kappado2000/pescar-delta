@@ -11,6 +11,7 @@ import '../models/weather_day.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
 import '../theme.dart';
+import '../widgets/sky.dart';
 import '../widgets/thermo.dart';
 import '../widgets/delta_scene.dart';
 
@@ -190,6 +191,13 @@ class _ForecastView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Acum la $place', style: text.titleSmall),
+                      SkyLabel(
+                        code: c.code,
+                        night:
+                            f.days.isNotEmpty &&
+                            (DateTime.now().isBefore(f.days.first.sunrise) ||
+                                DateTime.now().isAfter(f.days.first.sunset)),
+                      ),
                       Text(
                         'Presiune ${c.pressure.toStringAsFixed(0)} hPa, $trendText',
                       ),
@@ -284,14 +292,6 @@ Color _scoreColor(int score) => fishingScoreColor(score);
 Color _certaintyColor(double c) =>
     c >= 0.7 ? Sea.good : (c >= 0.45 ? Sea.ok : Sea.bad);
 
-IconData _skyIcon(DayForecast d) => d.precip >= 5
-    ? Icons.thunderstorm_outlined
-    : d.precip >= 1
-    ? Icons.water_drop_outlined
-    : d.windMax >= 35
-    ? Icons.air
-    : Icons.wb_sunny_outlined;
-
 /// Coloana unei zile în banda de 7 zile.
 class _DayColumn extends StatelessWidget {
   const _DayColumn({required this.day});
@@ -310,10 +310,9 @@ class _DayColumn extends StatelessWidget {
         ),
         Text(DateFormat('d.MM').format(day.date), style: small),
         const SizedBox(height: 6),
-        Icon(
-          _skyIcon(day),
-          size: 22,
-          color: Theme.of(context).colorScheme.primary,
+        Tooltip(
+          message: skyLabel(day.code),
+          child: Icon(skyIcon(day.code), size: 24, color: skyColor(day.code)),
         ),
         const SizedBox(height: 4),
         Text(
@@ -413,6 +412,7 @@ class _DayDetail extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
+              SkyLabel(code: day.code),
               Text.rich(
                 TextSpan(
                   children: [
@@ -421,7 +421,8 @@ class _DayDetail extends StatelessWidget {
                       text:
                           ' ${day.tMin.toStringAsFixed(0)}° / ${day.tMax.toStringAsFixed(0)}°   '
                           '💨 max ${day.windMax.toStringAsFixed(0)} km/h   '
-                          '💧 ${day.precip.toStringAsFixed(1)} mm',
+                          '💧 ${day.precip.toStringAsFixed(1)} mm'
+                          '${day.precipProbMax != null ? ' (șanse ${day.precipProbMax!.round()}%)' : ''}',
                     ),
                   ],
                 ),
@@ -517,13 +518,10 @@ class _DayHoursScreen extends StatelessWidget {
         (end.isAfter(dusk0) && t.isBefore(dusk1));
   }
 
-  IconData _sky(HourPoint h) {
-    final night = h.time.isBefore(day.sunrise) || h.time.isAfter(day.sunset);
-    if (h.precip >= 1) return Icons.water_drop;
-    if (h.precip >= 0.2) return Icons.grain;
-    if (h.wind >= 35) return Icons.air;
-    return night ? Icons.nightlight_round : Icons.wb_sunny_outlined;
-  }
+  /// Noapte = ora începe după apus sau se termină înainte de răsărit.
+  bool _night(HourPoint h) =>
+      h.time.add(const Duration(minutes: 59)).isBefore(day.sunrise) ||
+      !h.time.isBefore(day.sunset);
 
   @override
   Widget build(BuildContext context) {
@@ -635,7 +633,11 @@ class _DayHoursScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Icon(_sky(h), size: 20, color: scheme.primary),
+                          Icon(
+                            skyIcon(h.code, night: _night(h)),
+                            size: 24,
+                            color: skyColor(h.code, night: _night(h)),
+                          ),
                           const SizedBox(width: 6),
                           SizedBox(
                             width: 40,
@@ -647,9 +649,20 @@ class _DayHoursScreen extends StatelessWidget {
                             ),
                           ),
                           Expanded(
-                            child: Text(
-                              '${h.pressure.toStringAsFixed(0)} hPa$trend · ☁ ${h.cloud.toStringAsFixed(0)}%',
-                              style: text.bodySmall,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  skyLabel(h.code, night: _night(h)),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  '${h.pressure.toStringAsFixed(0)} hPa$trend · nori ${h.cloud.toStringAsFixed(0)}%',
+                                  style: text.bodySmall,
+                                ),
+                              ],
                             ),
                           ),
                           Tooltip(
@@ -693,7 +706,8 @@ class _DayHoursScreen extends StatelessWidget {
                         child: Text(
                           '💨 ${h.wind.toStringAsFixed(0)} km/h ${windDirName(h.windDir)}'
                           '${h.gust >= h.wind + 5 ? ', rafale ${h.gust.toStringAsFixed(0)}' : ''}'
-                          '${rain.isNotEmpty ? ' · 💧 ploaie $rain ${h.precip.toStringAsFixed(1)} mm' : ' · fără ploaie'}',
+                          '${rain.isNotEmpty ? ' · 💧 ploaie $rain ${h.precip.toStringAsFixed(1)} mm' : ' · fără ploaie'}'
+                          '${h.precipProb != null && h.precipProb! >= 10 ? ' (șanse ${h.precipProb!.round()}%)' : ''}',
                           style: text.bodySmall,
                         ),
                       ),

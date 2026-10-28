@@ -100,17 +100,12 @@ class AppStore extends ChangeNotifier {
     _load('seasons', seasons, Season.fromJson);
     _load('catches', catches, CatchEntry.fromJson);
     if (!kIsWeb) docsPath = await _docsDir();
-    // o singură dată: pescarul implicit la capturi = Ionescu Mihai Andrei
+    // o singură dată: pescarul implicit la capturi = primul participant
+    // (se poate schimba din Setări)
     if (_box.get('defaultCatcherSeeded') != true) {
-      final implicit = participants
-          .where(
-            (p) =>
-                p.nume.trim().toLowerCase() == 'ionescu' &&
-                p.prenume.toLowerCase().contains('mihai'),
-          )
-          .firstOrNull;
-      if (implicit != null && defaultCatcherId == null) {
-        await _box.put('defaultCatcherId', implicit.id);
+      final first = participants.firstOrNull;
+      if (first != null && defaultCatcherId == null) {
+        await _box.put('defaultCatcherId', first.id);
       }
       await _box.put('defaultCatcherSeeded', true);
     }
@@ -184,17 +179,11 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// La prima pornire nu se mai adaugă niciun participant: lista începe goală
+  /// și fiecare își trece singur datele (pe telefoanele existente, pasul
+  /// acesta a rulat deja o dată și nu mai schimbă nimic).
   Future<void> _seedOnce() async {
     if (_box.get('seeded') == true) return;
-    participants.add(
-      Participant(
-        id: newId(),
-        nume: 'Ionescu',
-        prenume: 'Mihai Andrei',
-        category: ParticipantCategory.pensionar,
-      ),
-    );
-    await _save('participants', participants);
     await _box.put('seeded', true);
   }
 

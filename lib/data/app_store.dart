@@ -613,7 +613,7 @@ class AppStore extends ChangeNotifier {
   /// Înlocuiește toate datele cu cele din [data] (un export).
   Future<void> importData(Map<String, dynamic> data) async {
     if (data['app'] != 'pescar_delta') {
-      throw const FormatException('Fișierul nu e o copie Pescar Deltă.');
+      throw const FormatException('Fișierul nu e o copie Deltă.');
     }
     List<Map<String, dynamic>> maps(String key) => [
       for (final e in (data[key] as List? ?? [])) Map<String, dynamic>.from(e),

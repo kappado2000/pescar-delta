@@ -79,7 +79,7 @@ Future<Uint8List> buildExpensesPdf(AppStore store, Season season) async {
       footer: (ctx) => pw.Align(
         alignment: pw.Alignment.centerRight,
         child: pw.Text(
-          'Pescar Deltă · pagina ${ctx.pageNumber} din ${ctx.pagesCount}',
+          'Deltă · pagina ${ctx.pageNumber} din ${ctx.pagesCount}',
           style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
         ),
       ),

@@ -219,8 +219,8 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.only(top: 24),
             child: Text(
               _buildNumber.isEmpty
-                  ? 'Pescar Deltă · previzualizare'
-                  : 'Pescar Deltă · build $_buildNumber',
+                  ? 'Deltă · previzualizare'
+                  : 'Deltă · build $_buildNumber',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),

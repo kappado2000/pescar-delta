@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (season != null) _loadWeather(season);
     return Scaffold(
       appBar: SceneAppBar(
-        title: 'Pescar Deltă',
+        title: 'Deltă',
         titleSuffix: '  - ${DateFormat('EEEE, d MMMM').format(DateTime.now())}',
         height: 150,
         actions: [

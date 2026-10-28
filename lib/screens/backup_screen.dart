@@ -74,7 +74,7 @@ class _BackupScreenState extends State<BackupScreen> {
       final raw = utf8.decode(await picked.single.readAsBytes());
       final data = jsonDecode(raw) as Map<String, dynamic>;
       if (data['app'] != 'pescar_delta') {
-        throw const FormatException('Fișierul nu e o copie Pescar Deltă.');
+        throw const FormatException('Fișierul nu e o copie Deltă.');
       }
       int n(String k) => (data[k] as List?)?.length ?? 0;
       if (!mounted) return;
